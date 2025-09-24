@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Product Detail{% endblock %}
+{% block content %}
+    <h1>Product Detail</h1>
+    <form>
+        <label for="product_description">Product Description:</label><br>
+        <textarea id="product_description" name="product_description" rows="4" cols="50"></textarea><br>
+        <label for="price">Price:</label><br>
+        <input type="text" id="price" name="price"><br>
+        <label for="sales_volume">Sales Volume:</label><br>
+        <input type="text" id="sales_volume" name="sales_volume">
+        <select id="sales_volume_unit" name="sales_volume_unit">
+            <option value="daily">Daily</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+        </select><br><br>
+        <input type="submit" value="Submit">
+    </form>
+{% endblock %}
