@@ -1,19 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Product Detail{% endblock %}
+{% block title %}Product & Sales Details{% endblock %}
 {% block content %}
-    <h1>Product Detail</h1>
-    <form>
-        <label for="product_description">Product Description:</label><br>
-        <textarea id="product_description" name="product_description" rows="4" cols="50"></textarea><br>
-        <label for="price">Price:</label><br>
-        <input type="text" id="price" name="price"><br>
-        <label for="sales_volume">Sales Volume:</label><br>
-        <input type="text" id="sales_volume" name="sales_volume">
-        <select id="sales_volume_unit" name="sales_volume_unit">
-            <option value="daily">Daily</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-        </select><br><br>
-        <input type="submit" value="Submit">
+<div class="container">
+    <h1 class="my-4"><span class="icon">📦</span> Enter Your Product & Sales Details</h1>
+    
+    <form action="{{ url_for('financial_forecast') }}" method="POST">
+        <!-- Responsive Headers for the product columns -->
+        <div class="row d-none d-md-flex mb-2 fw-bold">
+            <div class="col-md-6">Product/Service Description</div>
+            <div class="col-md-2">Price ($)</div>
+            <div class="col-md-2">Sales Volume</div>
+            <div class="col-md-2">Unit</div>
+        </div>
+
+        <div id="product-entries">
+            {% if products %}
+                {% for product in products %}
+                <div class="row product-entry mb-2 align-items-end">
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label d-md-none">Product/Service Description</label>
+                        <input type="text" class="form-control" name="product_description_{{ loop.index }}" value="{{ product.description }}" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Price ($)</label>
+                        <input type="number" class="form-control" name="price_{{ loop.index }}" value="{{ product.price }}" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Sales Volume</label>
+                        <input type="number" class="form-control" name="sales_volume_{{ loop.index }}" value="{{ product.sales_volume }}" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Sales Volume Unit</label>
+                        <select class="form-select" name="sales_volume_unit_{{ loop.index }}">
+                            <option value="monthly" {% if product.sales_volume_unit == 'monthly' %}selected{% endif %}>Monthly</option>
+                            <option value="quarterly" {% if product.sales_volume_unit == 'quarterly' %}selected{% endif %}>Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Initial product entry -->
+                <div class="row product-entry mb-2 align-items-end">
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label d-md-none">Product/Service Description</label>
+                        <input type="text" class="form-control" name="product_description_1" placeholder="e.g., Hand-crafted leather wallets" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Price ($)</label>
+                        <input type="number" class="form-control" name="price_1" placeholder="50" step="any" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Sales Volume</label>
+                        <input type="number" class="form-control" name="sales_volume_1" placeholder="100" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label d-md-none">Sales Volume Unit</label>
+                        <select class="form-select" name="sales_volume_unit_1">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between my-4">
+            <a href="{{ url_for('index') }}" class="btn btn-light">&larr; Back to Home</a>
+            <div>
+                <button type="button" class="btn btn-secondary me-2" id="addProductBtn">+ Add Another Product</button>
+                <button type="submit" class="btn btn-primary">Calculate Financial Forecast &rarr;</button>
+            </div>
+        </div>
     </form>
+</div>
+
+<script>
+    document.getElementById('addProductBtn').addEventListener('click', () => {
+        const productEntries = document.getElementById('product-entries');
+        const newIndex = productEntries.getElementsByClassName('product-entry').length + 1;
+
+        if (newIndex > 8) {
+            alert("You can add a maximum of 8 products.");
+            return;
+        }
+
+        const newProductHTML = `
+            <div class="row product-entry mb-2 align-items-end">
+                <div class="col-md-6 mb-2">
+                    <label class="form-label d-md-none">Product/Service Description</label>
+                    <input type="text" class="form-control" name="product_description_${newIndex}" required>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label d-md-none">Price ($)</label>
+                    <input type="number" class="form-control" name="price_${newIndex}" step="any" required>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label d-md-none">Sales Volume</label>
+                    <input type="number" class="form-control" name="sales_volume_${newIndex}" required>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label d-md-none">Sales Volume Unit</label>
+                    <select class="form-select" name="sales_volume_unit_${newIndex}">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        productEntries.insertAdjacentHTML('beforeend', newProductHTML);
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,17 @@
+{
+    "high_risk": {
+        "status": "High Risk",
+        "caption": "Your monthly profit does not sufficiently cover the loan payment. This is a high-risk loan.",
+        "status_class": "danger"
+    },
+    "medium_risk": {
+        "status": "Medium Risk",
+        "caption": "Your monthly profit covers the loan payment, but there is a limited safety buffer.",
+        "status_class": "warning"
+    },
+    "low_risk": {
+        "status": "Low Risk",
+        "caption": "Your monthly profit comfortably covers the loan payment with a solid safety buffer.",
+        "status_class": "success"
+    }
+}

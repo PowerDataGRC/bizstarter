@@ -1,6 +1,139 @@
 {% extends "base.html" %}
 {% block title %}Financial Forecast{% endblock %}
 {% block content %}
-    <h1>Financial Forecast</h1>
-    <p>This page will display financial projections based on the product details you provide.</p>
+<div class="container">
+    <h1 class="my-4"><span class="icon">📈</span> Financial Forecast</h1>
+
+    <!-- Financial Parameters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Financial Parameters</h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="cogsPercentage" class="form-label">Cost of Goods Sold (COGS): <span id="cogsValue">{{ cogs_percentage }}</span>%</label>
+                    <input type="range" class="form-range" id="cogsPercentage" value="{{ cogs_percentage }}" min="0" max="100" step="1">
+                </div>
+                <div class="col-md-6">
+                    <label for="quarterlyExpenses" class="form-label">Quarterly Operating Expenses ($)</label>
+                    <input type="number" class="form-control" id="quarterlyExpenses" value="{{ quarterly_operating_expenses }}" step="100">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forecast Results -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2>Forecast Results</h2>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                <input type="radio" class="btn-check" name="viewToggle" id="annual-view" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="annual-view">Annual</label>
+
+                <input type="radio" class="btn-check" name="viewToggle" id="quarterly-view" autocomplete="off">
+                <label class="btn btn-outline-primary" for="quarterly-view">Quarterly</label>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if forecast %}
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Total Revenue</div>
+                        <div class="stat-value text-primary" id="revenue-display"></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Net Profit</div>
+                        <div class="stat-value text-success" id="net-profit-display"></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Profit Margin</div>
+                        <div class="stat-value text-info" id="profit-margin-display"></div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                Your financial forecast will be displayed here once you enter your product details.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="d-flex justify-content-between my-4">
+        <a href="{{ url_for('product_detail') }}" class="btn btn-light">&larr; Back to Product Details</a>
+        <a href="{{ url_for('loan_calculator') }}" class="btn btn-primary">Assess Loan Affordability &rarr;</a>
+    </div>
+</div>
+
+<script>
+    // Store the forecast data passed from the backend
+    const forecastData = {{ forecast | tojson | safe }};
+
+    // Function to format numbers as currency
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    };
+
+    // Function to update the display based on the selected view
+    const updateDisplay = (view) => {
+        if (!forecastData) return;
+
+        const data = forecastData[view];
+        document.getElementById('revenue-display').textContent = formatCurrency(data.revenue);
+        document.getElementById('net-profit-display').textContent = formatCurrency(data.net_profit);
+        document.getElementById('profit-margin-display').textContent = data.profit_margin.toFixed(2) + '%';
+    };
+
+    // Event listeners for the view toggle
+    document.getElementById('annual-view').addEventListener('change', () => updateDisplay('annual'));
+    document.getElementById('quarterly-view').addEventListener('change', () => updateDisplay('quarterly'));
+
+    // Initial display update
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDisplay('annual'); // Default to annual view
+    });
+
+    // --- Recalculation Logic ---
+    const cogsSlider = document.getElementById('cogsPercentage');
+    const cogsValue = document.getElementById('cogsValue');
+    const quarterlyExpensesInput = document.getElementById('quarterlyExpenses');
+
+    const recalculate = () => {
+        const cogs = cogsSlider.value;
+        const expenses = quarterlyExpensesInput.value;
+        cogsValue.textContent = cogs;
+
+        fetch('/recalculate-forecast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                cogs_percentage: cogs,
+                quarterly_operating_expenses: expenses
+            }),
+        })
+        .then(response => response.json())
+        .then(newForecast => {
+            // Update the global forecast data
+            forecastData.annual = newForecast.annual;
+            forecastData.quarterly = newForecast.quarterly;
+
+            // Update the display based on the currently selected view
+            const selectedView = document.getElementById('annual-view').checked ? 'annual' : 'quarterly';
+            updateDisplay(selectedView);
+        })
+        .catch(error => console.error('Error recalculating forecast:', error));
+    };
+
+    cogsSlider.addEventListener('input', recalculate);
+    quarterlyExpensesInput.addEventListener('input', recalculate);
+</script>
 {% endblock %}
