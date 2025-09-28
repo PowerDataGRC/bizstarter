@@ -1,113 +1,293 @@
 {% extends "base.html" %}
 {% block title %}Product & Sales Details{% endblock %}
 {% block content %}
-<div class="container">
-    <h1 class="my-4"><span class="icon">📦</span> Enter Your Product & Sales Details</h1>
+    <div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="mb-0"><span class="icon">📦</span> Enter Your Product & Sales Details</h1>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label for="companyName" class="form-label">Company Name (Optional)</label>
+            <input type="text" class="form-control" id="companyName" name="company_name" placeholder="e.g., My Awesome Startup" value="{{ session.get('company_name', '') }}">
+        </div>
+    </div>
     
     <form action="{{ url_for('financial_forecast') }}" method="POST">
-        <!-- Responsive Headers for the product columns -->
-        <div class="row d-none d-md-flex mb-2 fw-bold">
-            <div class="col-md-6">Product/Service Description</div>
-            <div class="col-md-2">Price ($)</div>
-            <div class="col-md-2">Sales Volume</div>
-            <div class="col-md-2">Unit</div>
+        <div id="product-entries-grid" class="product-entries-scroll-area">
+            <!-- Initial 4 product entries will be rendered here by JavaScript -->
         </div>
 
-        <div id="product-entries">
-            {% if products %}
-                {% for product in products %}
-                <div class="row product-entry mb-2 align-items-end">
-                    <div class="col-md-6 mb-2">
-                        <label class="form-label d-md-none">Product/Service Description</label>
-                        <input type="text" class="form-control" name="product_description_{{ loop.index }}" value="{{ product.description }}" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Price ($)</label>
-                        <input type="number" class="form-control" name="price_{{ loop.index }}" value="{{ product.price }}" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Sales Volume</label>
-                        <input type="number" class="form-control" name="sales_volume_{{ loop.index }}" value="{{ product.sales_volume }}" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Sales Volume Unit</label>
-                        <select class="form-select" name="sales_volume_unit_{{ loop.index }}">
-                            <option value="monthly" {% if product.sales_volume_unit == 'monthly' %}selected{% endif %}>Monthly</option>
-                            <option value="quarterly" {% if product.sales_volume_unit == 'quarterly' %}selected{% endif %}>Quarterly</option>
-                        </select>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <!-- Initial product entry -->
-                <div class="row product-entry mb-2 align-items-end">
-                    <div class="col-md-6 mb-2">
-                        <label class="form-label d-md-none">Product/Service Description</label>
-                        <input type="text" class="form-control" name="product_description_1" placeholder="e.g., Hand-crafted leather wallets" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Price ($)</label>
-                        <input type="number" class="form-control" name="price_1" placeholder="50" step="any" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Sales Volume</label>
-                        <input type="number" class="form-control" name="sales_volume_1" placeholder="100" required>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label d-md-none">Sales Volume Unit</label>
-                        <select class="form-select" name="sales_volume_unit_1">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                        </select>
-                    </div>
-                </div>
-            {% endif %}
+        <div class="d-flex justify-content-between my-4">
+            <div>
+                <button type="button" class="btn btn-secondary" id="addProductBtn">+ Add Product</button>
+            </div>
+            <div class="text-end">
+                <label for="total-sales" class="form-label">Total Annual Sales ($)</label>
+                <input type="text" id="total-sales" class="form-control" readonly>
+            </div>
+        </div>
+        
+        <h2 class="my-4"><span class="icon">💼</span> Business Operating Expenses</h2>
+        <div id="expense-entries-grid" class="expense-entries-scroll-area">
+            <!-- Expense entries will be rendered here by JavaScript -->
+        </div>
+        <div class="my-4">
+            <button type="button" class="btn btn-secondary" id="addExpenseBtn">+ Add Expense</button>
         </div>
 
         <div class="d-flex justify-content-between my-4">
             <a href="{{ url_for('index') }}" class="btn btn-light">&larr; Back to Home</a>
-            <div>
-                <button type="button" class="btn btn-secondary me-2" id="addProductBtn">+ Add Another Product</button>
-                <button type="submit" class="btn btn-primary">Calculate Financial Forecast &rarr;</button>
-            </div>
+            <button type="submit" class="btn btn-primary">Calculate Financial Forecast &rarr;</button>
         </div>
     </form>
-</div>
 
 <script>
-    document.getElementById('addProductBtn').addEventListener('click', () => {
-        const productEntries = document.getElementById('product-entries');
-        const newIndex = productEntries.getElementsByClassName('product-entry').length + 1;
+    document.addEventListener('DOMContentLoaded', () => {
+        const productEntriesGrid = document.getElementById('product-entries-grid');
+        const addProductBtn = document.getElementById('addProductBtn');
+        const expenseEntriesGrid = document.getElementById('expense-entries-grid');
+        const addExpenseBtn = document.getElementById('addExpenseBtn');
 
-        if (newIndex > 8) {
-            alert("You can add a maximum of 8 products.");
-            return;
-        }
+        // Initialize with data passed from Flask session, or empty arrays
+        let allProductsData = {{ products | tojson }};
+        let allExpensesData = {{ expenses | tojson }};
 
-        const newProductHTML = `
-            <div class="row product-entry mb-2 align-items-end">
-                <div class="col-md-6 mb-2">
-                    <label class="form-label d-md-none">Product/Service Description</label>
-                    <input type="text" class="form-control" name="product_description_${newIndex}" required>
+        const createProductEntryHTML = (index, product = {}) => {
+            return `
+                <div class="row product-entry mb-2 align-items-end" data-product-index="${index}">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label visually-hidden">Product Description</label>
+                        <input type="text" class="form-control" name="product_description_${index}" placeholder="Product/Service ${index}" value="${product.description || ''}" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label visually-hidden">Price ($)</label>
+                        <input type="text" class="form-control number-input" name="price_${index}" placeholder="Price" value="${formatNumber(product.price)}" title="Price ($)" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label visually-hidden">Sales Volume</label>
+                        <input type="text" class="form-control number-input" name="sales_volume_${index}" placeholder="Volume" value="${formatNumber(product.sales_volume)}" title="Sales Volume" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label visually-hidden">Unit</label>
+                        <select class="form-select" name="sales_volume_unit_${index}">
+                            <option value="monthly" ${product.sales_volume_unit === 'monthly' ? 'selected' : ''}>Monthly</option>
+                            <option value="quarterly" ${product.sales_volume_unit === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 mb-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-product-btn">X</button>
+                    </div>
                 </div>
-                <div class="col-md-2 mb-2">
-                    <label class="form-label d-md-none">Price ($)</label>
-                    <input type="number" class="form-control" name="price_${newIndex}" step="any" required>
+            `;
+        };
+
+        const collectAllProductInputs = () => {
+            const collectedData = [];
+            const allEntryElements = productEntriesGrid.querySelectorAll('.product-entry');
+            
+            allEntryElements.forEach(entry => {
+                const description = entry.querySelector('[name^="product_description_"]').value;
+                const price = parseFormattedNumber(entry.querySelector('[name^="price_"]').value);
+                const salesVolume = parseFormattedNumber(entry.querySelector('[name^="sales_volume_"]').value);
+                const salesVolumeUnit = entry.querySelector('[name^="sales_volume_unit_"]').value;
+
+                if (description || price || salesVolume) {
+                    collectedData.push({
+                        description: description,
+                        price: price,
+                        sales_volume: salesVolume,
+                        sales_volume_unit: salesVolumeUnit
+                    });
+                }
+            });
+            return collectedData;
+        };
+
+        const renderProducts = () => {
+            productEntriesGrid.innerHTML = ''; // Clear existing entries
+
+            allProductsData.forEach((product, index) => {
+                productEntriesGrid.insertAdjacentHTML('beforeend', createProductEntryHTML(index + 1, product));
+            });
+            updateTotalSales();
+            saveDataToSession(); // Save changes to session
+        };
+
+        const updateTotalSales = () => {
+            let totalAnnualRevenue = 0;
+            allProductsData.forEach(product => {
+                const price = parseFloat(product.price) || 0;
+                const salesVolume = parseFloat(product.sales_volume) || 0;
+                const salesVolumeUnit = product.sales_volume_unit;
+                
+                let annualVolume = 0;
+                if (salesVolumeUnit === 'monthly') {
+                    annualVolume = salesVolume * 12;
+                } else { // quarterly
+                    annualVolume = salesVolume * 4;
+                }
+                totalAnnualRevenue += price * annualVolume;
+            });
+            document.getElementById('total-sales').value = totalAnnualRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        // Expense Functions
+        const createExpenseEntryHTML = (index, expense = {}) => {
+            const frequencies = [{value: 'monthly', text: 'Monthly'}, {value: 'quarterly', text: 'Quarterly'}];
+            let optionsHTML = '';
+            frequencies.forEach(freq => {
+                optionsHTML += `<option value="${freq.value}" ${expense.frequency === freq.value ? 'selected' : ''}>${freq.text}</option>`;
+            });
+            return `
+                <div class="row expense-entry mb-2 align-items-end" data-expense-index="${index}">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label visually-hidden">Expense Item</label>
+                        <input type="text" class="form-control" name="expense_item_${index}" placeholder="Expense Item ${index}" value="${expense.item || ''}" ${expense.readonly ? 'readonly' : ''} required>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <label class="form-label visually-hidden">Amount ($)</label>
+                        <input type="text" class="form-control expense-amount number-input" name="expense_amount_${index}" placeholder="Amount" value="${formatNumber(expense.amount)}" required>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <label class="form-label visually-hidden">Frequency</label>
+                        <select class="form-select expense-frequency" name="expense_frequency_${index}">
+                            ${optionsHTML}
+                        </select>
+                    </div>
+                    <div class="col-md-1 mb-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-expense-btn" ${expense.readonly ? 'disabled' : ''}>X</button>
+                    </div>
                 </div>
-                <div class="col-md-2 mb-2">
-                    <label class="form-label d-md-none">Sales Volume</label>
-                    <input type="number" class="form-control" name="sales_volume_${newIndex}" required>
-                </div>
-                <div class="col-md-2 mb-2">
-                    <label class="form-label d-md-none">Sales Volume Unit</label>
-                    <select class="form-select" name="sales_volume_unit_${newIndex}">
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        productEntries.insertAdjacentHTML('beforeend', newProductHTML);
+            `;
+        };
+
+        const collectAllExpenseInputs = () => {
+            const collectedData = [];
+            const allEntryElements = expenseEntriesGrid.querySelectorAll('.expense-entry');
+            
+            allEntryElements.forEach(entry => {
+                const item = entry.querySelector('[name^="expense_item_"]').value;
+                const amount = parseFormattedNumber(entry.querySelector('[name^="expense_amount_"]').value);
+                const frequency = entry.querySelector('[name^="expense_frequency_"]').value;
+                const readonly = entry.querySelector('[name^="expense_item_"]').hasAttribute('readonly');
+
+                if (item || amount || frequency) {
+                    collectedData.push({
+                        item: item,
+                        amount: amount,
+                        frequency: frequency,
+                        readonly: readonly // Persist readonly state
+                    });
+                }
+            });
+            return collectedData;
+        };
+
+        const renderExpenses = () => {
+            expenseEntriesGrid.innerHTML = ''; // Clear existing entries
+
+            allExpensesData.forEach((expense, index) => {
+                expenseEntriesGrid.insertAdjacentHTML('beforeend', createExpenseEntryHTML(index + 1, expense));
+            });
+            saveDataToSession(); // Save changes to session
+        };
+
+        // Function to save product and expense data to Flask session via AJAX
+        const saveDataToSession = async () => {
+            try {
+                const response = await fetch("{{ url_for('save_product_details') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        products: allProductsData,
+                        expenses: allExpensesData,
+                        company_name: companyName
+                    }),
+                });
+                if (!response.ok) {
+                    console.error('Failed to save data to session');
+                }
+            } catch (error) {
+                console.error('Error saving data to session:', error);
+            }
+        };
+
+        // --- Number Formatting ---
+        const formatNumber = (num) => {
+            if (num === null || num === undefined || num === '') return '';
+            const number = parseFloat(num);
+            return isNaN(number) ? '' : number.toLocaleString('en-US');
+        };
+
+        const parseFormattedNumber = (str) => {
+            if (typeof str !== 'string') return str;
+            // Remove commas and parse as float
+            const number = parseFloat(str.replace(/,/g, ''));
+            return isNaN(number) ? 0 : number;
+        };
+
+        // Event listener for adding a new product entry
+        addProductBtn.addEventListener('click', () => {
+            allProductsData.push({}); // Add a new empty product object
+            renderProducts(); // Re-render all products, including the new empty one
+            // Scroll to the bottom of the product-entries-grid if it has a scrollbar
+            productEntriesGrid.scrollTop = productEntriesGrid.scrollHeight;
+        });
+
+        // Event listener for adding a new expense entry
+        addExpenseBtn.addEventListener('click', () => {
+            allExpensesData.push({}); // Add a new empty expense object
+            renderExpenses(); // Re-render all expenses, including the new empty one
+            // Scroll to the bottom of the expense-entries-grid if it has a scrollbar
+            expenseEntriesGrid.scrollTop = expenseEntriesGrid.scrollHeight;
+        });
+
+        // Universal event listener for input changes in product entries
+        document.addEventListener('input', (e) => {
+            if (e.target.closest('.product-entry')) {
+                allProductsData = collectAllProductInputs(); // Update allProductsData immediately on input
+                updateTotalSales();
+                saveDataToSession(); // Save changes to session
+            } else if (e.target.closest('.expense-entry')) {
+                allExpensesData = collectAllExpenseInputs(); // Update allExpensesData immediately on input
+                saveDataToSession(); // Save changes to session
+            } else if (e.target.id === 'companyName') {
+                saveDataToSession(); // Save company name on input
+            }
+            // Re-format number inputs on focus out
+            if (e.type === 'focusout' && e.target.classList.contains('number-input')) {
+                const rawValue = e.target.value;
+                e.target.value = formatNumber(parseFormattedNumber(rawValue));
+            }
+        });
+
+        // Universal event listener for removing a product or expense entry
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-product-btn')) {
+                const entryToRemove = e.target.closest('.product-entry');
+                if (entryToRemove) {
+                    const indexToRemove = Array.from(productEntriesGrid.children).indexOf(entryToRemove);
+                    allProductsData.splice(indexToRemove, 1); // Remove from array
+                    renderProducts(); // Re-render everything to update indices and display
+                }
+            } else if (e.target.classList.contains('remove-expense-btn')) {
+                const entryToRemove = e.target.closest('.expense-entry');
+                if (entryToRemove) {
+                    const indexToRemove = Array.from(expenseEntriesGrid.children).indexOf(entryToRemove);
+                    allExpensesData.splice(indexToRemove, 1); // Remove from array
+                    renderExpenses(); // Re-render everything to update indices and display
+                }
+            }
+        });
+
+        // Add focusout listener for formatting
+        document.addEventListener('focusout', (e) => { if (e.target.classList.contains('number-input')) document.dispatchEvent(new Event('input', { bubbles: true })); });
+
+        // Initial rendering of products and expenses from session data
+        renderProducts();
+        renderExpenses();
     });
 </script>
 {% endblock %}

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Loan Payment Calculator{% endblock %}
 {% block content %}
-<div class="container">
     <h1 class="my-3 h3"><span class="icon">🏦</span> Loan Payment Calculator</h1>
 
     <!-- Business Profitability -->
@@ -66,6 +65,14 @@
                             <p class="mt-1 small">{{ assessment.caption }}</p>
                         </div>
                     {% endif %}
+                    {% if dscr > 0 %}
+                    <hr class="my-2">
+                    <div class="mt-2">
+                        <div class="stat-title small">Debt Service Coverage Ratio (DSCR)</div>
+                        <div class="stat-value h6 text-primary">{{ "{:,.2f}".format(dscr) }}</div>
+                        <p class="mt-1 small">{{ dscr_status }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -94,9 +101,12 @@
     </div>
 
     <div class="my-4">
-        <a href="{{ url_for('financial_forecast') }}" class="btn btn-light btn-sm">&larr; Back to Financial Forecast</a>
-    </div>
-
+        <a href="{{ url_for('financial_forecast') }}" class="btn btn-light">&larr; Back to Financial Forecast</a>
+        {% if monthly_payment %}
+        <a href="{{ url_for('export_forecast') }}" class="btn btn-success">
+            <span class="icon me-1">📄</span>Export Results
+        </a>
+        {% endif %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

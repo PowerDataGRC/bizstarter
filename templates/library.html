@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Financial Ratios Library{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="my-4"><span class="icon">📚</span> Financial Ratios Library</h1>
+    <p class="lead">Understand the key metrics that drive business decisions. This guide explains each financial ratio used in the application.</p>
+
+    <div class="accordion" id="ratiosAccordion">
+
+        <!-- Profitability Ratios -->
+        <div class="accordion-item" id="profitability-ratios">
+            <h2 class="accordion-header" id="headingProfitability">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProfitability" aria-expanded="true" aria-controls="collapseProfitability">
+                    Profitability Ratios
+                </button>
+            </h2>
+            <div id="collapseProfitability" class="accordion-collapse collapse show" aria-labelledby="headingProfitability" data-bs-parent="#ratiosAccordion">
+                <div class="accordion-body">
+                    <p>Profitability ratios measure a company's ability to generate earnings relative to its revenue, operating costs, balance sheet assets, or shareholders' equity over time.</p>
+                    <hr>
+                    <h6>Net Profit Margin</h6>
+                    <p><strong>What it measures:</strong> The percentage of revenue left after all expenses, including taxes and interest, have been deducted. It's a key indicator of a company's overall profitability.</p>
+                    <p><strong>Formula:</strong> <code>(Net Profit / Total Revenue) * 100</code></p>
+                    <a href="https://www.investopedia.com/terms/p/profitmargin.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                    <hr>
+                    <h6>Return on Assets (ROA)</h6>
+                    <p><strong>What it measures:</strong> How efficiently a company is using its assets to generate profit. A higher ROA indicates better asset management.</p>
+                    <p><strong>Formula:</strong> <code>(Net Profit / Total Assets) * 100</code></p>
+                    <a href="https://www.investopedia.com/terms/r/returnonassets.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liquidity Ratios -->
+        <div class="accordion-item" id="liquidity-ratios">
+            <h2 class="accordion-header" id="headingLiquidity">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiquidity" aria-expanded="false" aria-controls="collapseLiquidity">
+                    Liquidity Ratios
+                </button>
+            </h2>
+            <div id="collapseLiquidity" class="accordion-collapse collapse" aria-labelledby="headingLiquidity" data-bs-parent="#ratiosAccordion">
+                <div class="accordion-body">
+                    <p>Liquidity ratios measure a company's ability to pay off its short-term debts and obligations without raising external capital.</p>
+                    <hr>
+                    <h6>Current Ratio</h6>
+                    <p><strong>What it measures:</strong> A company's ability to cover its short-term liabilities with its short-term assets. A ratio under 1 suggests potential difficulty in meeting obligations.</p>
+                    <p><strong>Formula:</strong> <code>Current Assets / Current Liabilities</code></p>
+                    <a href="https://www.investopedia.com/terms/c/currentratio.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Solvency Ratios -->
+        <div class="accordion-item" id="solvency-ratios">
+            <h2 class="accordion-header" id="headingSolvency">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolvency" aria-expanded="false" aria-controls="collapseSolvency">
+                    Solvency Ratios
+                </button>
+            </h2>
+            <div id="collapseSolvency" class="accordion-collapse collapse" aria-labelledby="headingSolvency" data-bs-parent="#ratiosAccordion">
+                <div class="accordion-body">
+                    <p>Solvency ratios measure a company's ability to meet its long-term financial obligations. They are used to gauge a company's financial health and risk of bankruptcy.</p>
+                    <hr>
+                    <h6>Debt-to-Equity Ratio</h6>
+                    <p><strong>What it measures:</strong> The proportion of a company's financing that comes from debt versus equity. A high ratio indicates high leverage and potentially higher risk.</p>
+                    <p><strong>Formula:</strong> <code>Total Debt / Total Equity</code></p>
+                    <a href="https://www.investopedia.com/terms/d/debtequityratio.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                    <hr>
+                    <h6>Interest Coverage Ratio (ICR)</h6>
+                    <p><strong>What it measures:</strong> How easily a company can pay interest on its outstanding debt. It is a measure of how many times a company can cover its current interest payments with its available earnings.</p>
+                    <p><strong>Formula:</strong> <code>EBITDA / Interest Expense</code></p>
+                    <a href="https://www.investopedia.com/terms/i/interestcoverageratio.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cash Flow Ratios -->
+        <div class="accordion-item" id="cash-flow-ratios">
+            <h2 class="accordion-header" id="headingCashFlow">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCashFlow" aria-expanded="false" aria-controls="collapseCashFlow">
+                    Cash Flow Ratios
+                </button>
+            </h2>
+            <div id="collapseCashFlow" class="accordion-collapse collapse" aria-labelledby="headingCashFlow" data-bs-parent="#ratiosAccordion">
+                <div class="accordion-body">
+                    <p>Cash flow ratios measure a company's ability to generate cash to cover its debts and fund its operations.</p>
+                    <hr>
+                    <h6>Operating Cash Flow Ratio</h6>
+                    <p><strong>What it measures:</strong> How well a company can pay off its current liabilities with the cash generated from its core business operations. A ratio above 1 is generally considered good.</p>
+                    <p><strong>Formula:</strong> <code>Operating Cash Flow / Current Liabilities</code></p>
+                    <a href="https://www.investopedia.com/terms/o/operatingcashflowratio.asp" target="_blank" class="btn btn-sm btn-outline-info">Learn More</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

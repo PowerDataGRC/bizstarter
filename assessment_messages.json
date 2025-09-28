@@ -2,16 +2,19 @@
     "high_risk": {
         "status": "High Risk",
         "caption": "Your monthly profit does not sufficiently cover the loan payment. This is a high-risk loan.",
-        "status_class": "danger"
+        "status_class": "danger",
+        "dscr_status": "A DSCR below 1.0 indicates that the business's net operating income is not sufficient to cover its debt obligations, signaling high financial risk."
     },
     "medium_risk": {
         "status": "Medium Risk",
         "caption": "Your monthly profit covers the loan payment, but there is a limited safety buffer.",
-        "status_class": "warning"
+        "status_class": "warning",
+        "dscr_status": "A DSCR between 1.0 and 1.25 is often considered borderline. While income covers debt, the buffer for unexpected expenses is slim."
     },
     "low_risk": {
         "status": "Low Risk",
         "caption": "Your monthly profit comfortably covers the loan payment with a solid safety buffer.",
-        "status_class": "success"
+        "status_class": "success",
+        "dscr_status": "A DSCR above 1.25 is generally considered healthy, indicating a good ability to handle current debt payments with a comfortable cushion."
     }
 }

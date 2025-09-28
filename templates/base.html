@@ -1,35 +1,81 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<!doctype html>
+<html lang="en" data-bs-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}My App{% endblock %}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}BizStarter{% endblock %}</title>
+    
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    
+    <!-- Custom CSS - Must be after Bootstrap to override styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
+    <style>
+        .icon {
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        .ratio-group-title {
+            font-weight: bold;
+            color: var(--bs-secondary-color); /* Use Bootstrap CSS variable for theme compatibility */
+            margin-bottom: 1rem;
+        }
+    </style>
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Financial Forecaster</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Intro</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('product_detail') }}">Product Detail</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('financial_forecast') }}">Financial Forecast</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('loan_calculator') }}">Loan Calculator</a></li>
-                </ul>
+<body class="d-flex">
+    <div class="sidebar d-flex flex-column p-3">
+        <a class="sidebar-brand d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none" href="{{ url_for('index') }}">
+            <span class="fs-4">📈 BizStarter</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a href="{{ url_for('product_detail') }}" class="nav-link {% if request.endpoint == 'product_detail' %}active{% endif %}">Products & Expenses</a>
+            </li>
+            <li>
+                <a href="{{ url_for('financial_forecast') }}" class="nav-link {% if request.endpoint == 'financial_forecast' %}active{% endif %}">Financial Forecast</a>
+            </li>
+            <li>
+                <a href="{{ url_for('loan_calculator') }}" class="nav-link {% if request.endpoint == 'loan_calculator' %}active{% endif %}">Loan Calculator</a>
+            </li>
+            <li>
+                <a href="{{ url_for('library') }}" class="nav-link {% if request.endpoint == 'library' %}active{% endif %}">Help & Resources</a>
+            </li>
+        </ul>
+        <hr>
+        <div class="sidebar-footer">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="theme-switcher">
+                <label class="form-check-label" for="theme-switcher">Dark Mode</label>
             </div>
         </div>
-    </nav>
-    <div class="container mt-4">
-        {% block content %}{% endblock %}
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <main class="main-content p-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <script>
+        // --- Theme Switcher Logic ---
+        const themeSwitcher = document.getElementById('theme-switcher');
+        const htmlElement = document.documentElement;
+
+        // Set the theme on initial load
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        htmlElement.setAttribute('data-bs-theme', currentTheme);
+        themeSwitcher.checked = currentTheme === 'dark';
+
+        // Listen for theme changes
+        themeSwitcher.addEventListener('change', function () {
+            const theme = this.checked ? 'dark' : 'light';
+            htmlElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('theme', theme);
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>
