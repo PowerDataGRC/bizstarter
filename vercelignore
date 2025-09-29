@@ -1,0 +1,16 @@
+# Exclude virtual environment
+.venv/
+
+# Exclude Python cache directories
+__pycache__/
+*.pyc
+
+# Exclude Streamlit specific files (if any are generated)
+.streamlit/
+
+# Exclude Git directory
+.git/
+
+# Exclude any other local development files you don't need in production
+# For example, if you have a 'data/' directory with large files for local testing:
+# data/
