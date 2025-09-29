@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-md-6">
             <label for="companyName" class="form-label">Company Name (Optional)</label>
-            <input type="text" class="form-control" id="companyName" name="company_name" placeholder="e.g., My Awesome Startup" value="{{ session.get('company_name', '') }}">
+            <input type="text" class="form-control" id="companyName" name="company_name" placeholder="My Awesome Startup" value="{{ company_name }}">
         </div>
     </div>
     
@@ -203,7 +203,8 @@
                     body: JSON.stringify({
                         products: allProductsData,
                         expenses: allExpensesData,
-                        company_name: companyName
+                        // Get company name directly from the input field
+                        company_name: document.getElementById('companyName').value
                     }),
                 });
                 if (!response.ok) {

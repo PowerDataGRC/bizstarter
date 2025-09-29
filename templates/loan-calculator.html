@@ -10,7 +10,7 @@
         </div>
         <div class="card-body py-2">
             {% if quarterly_net_profit is not none %}
-                <p class="mb-1 small">Your estimated quarterly net profit is: <strong>${{ "{:,.2f}".format(quarterly_net_profit) }}</strong></p>
+                <p class="mb-1 small">Your estimated annual net profit is: <strong>${{ "{:,.2f}".format(quarterly_net_profit * 4) }}</strong></p>
                 <p class="mb-0 small">This provides an estimated <strong>${{ "{:,.2f}".format(quarterly_net_profit / 3) }}</strong> of monthly net profit to work with.</p>
             {% else %}
                 <div class="alert alert-warning alert-sm mb-0" role="alert">

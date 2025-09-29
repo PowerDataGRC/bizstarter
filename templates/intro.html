@@ -1,13 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Welcome{% endblock %}
 {% block content %}
-<div class="container text-center">
-    <h1 class="my-4"><span class="icon">🚀</span> Business Starter</h1>
-    <p class="lead">An interactive tool to help you forecast your business's financial health and assess loan affordability.</p>
-    <p class="lead">You can enter up to 10 line items. Click the Add Product on the next screen, add a short item description, Unit Price, and estimated Sales Quantity, either monthly or quartelry.</p>
-    <p class="lead">Next, enter business expense items, either monthly or quartelry</p>
-    <div class="d-grid gap-2 col-6 mx-auto mt-4">
-        <a href="{{ url_for('product_detail', startover=True) }}" class="btn btn-primary btn-lg">Get Started</a>
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-8 text-center">
+        <h1 class="my-4"><span class="icon">🚀</span> Business Starter</h1>
+        <p class="lead">An interactive tool to forecast your business's financial health and assess loan affordability.</p>
+        <p class="text-muted">Create an account or log in to save your progress and access your financial models anytime.</p>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning" role="alert">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h5 class="card-title">Login</h5>
+                        <form action="{{ url_for('login') }}" method="POST">
+                            <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username" required></div>
+                            <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required></div>
+                            <button type="submit" class="btn btn-primary w-100">Login</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="card-title">Register</h5>
+                        <form action="{{ url_for('register') }}" method="POST">
+                            <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Choose a Username" required></div>
+                            <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Choose a Password" required></div>
+                            <button type="submit" class="btn btn-success w-100">Create Account</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="mt-3 small text-muted">Please remember your credentials to retrieve your activities later.</p>
     </div>
 </div>
 {% endblock %}

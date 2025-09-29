@@ -1,5 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Financial Forecast{% endblock %}
+{% block title %}Financial Forecast{% endblock %} 
+
+{% block head_extra %}
+<style>
+    /* Custom styles for the seasonality accordion button */
+    #seasonalityAccordion .accordion-button.collapsed {
+        background-color: #0d6efd; /* Bootstrap primary blue */
+        color: white;
+    }
+
+    #seasonalityAccordion .accordion-button:not(.collapsed) {
+        background-color: #e9ecef; /* A light grey for the expanded state */
+        color: #212529; /* Default dark text color */
+    }
+
+    /* Ensure the expand/collapse icon is white on the blue background */
+    #seasonalityAccordion .accordion-button.collapsed::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    }
+
+    /* Make the muted helper text lighter on the blue background */
+    #seasonalityAccordion .accordion-button.collapsed .text-muted {
+        color: #f8f9fa !important; /* A light grey/white for contrast */
+    }
+
+    /* Custom styles for the itemized accordion button */
+    #itemizedAccordion .accordion-button.collapsed {
+        background-color: #0d6efd; /* Bootstrap primary blue */
+        color: white;
+    }
+
+    #itemizedAccordion .accordion-button:not(.collapsed) {
+        background-color: #e9ecef; /* A light grey for the expanded state */
+        color: #212529; /* Default dark text color */
+    }
+
+    /* Ensure the expand/collapse icon is white on the blue background */
+    #itemizedAccordion .accordion-button.collapsed::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    }
+
+    #itemizedAccordion .accordion-button.collapsed .text-muted {
+        color: #f8f9fa !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <!-- Financial Parameters -->
     <div class="card mb-4">
@@ -7,6 +53,54 @@
             <h2>Financial Parameters</h2>
         </div>
         <div class="card-body">
+            <div class="accordion" id="itemizedAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingItemized">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemized" aria-expanded="false" aria-controls="collapseItemized">
+                            Itemized Assets & Liabilities
+                        </button>
+                    </h2>
+                    <div id="collapseItemized" class="accordion-collapse collapse" aria-labelledby="headingItemized" data-bs-parent="#itemizedAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <!-- Itemized Assets -->
+                                <div class="col-lg-6">
+                                    <h5 class="ratio-group-title">Itemized Assets</h5>
+                                    <table class="table table-sm">
+                                        <tbody id="assets-table-body">
+                                            {% for asset in assets %}
+                                            <tr>
+                                                <td><input type="text" class="form-control form-control-sm asset-description" value="{{ asset.description }}"></td>
+                                                <td><input type="text" class="form-control form-control-sm number-input asset-amount" value="{{ '{:,.0f}'.format(asset.amount) }}"></td>
+                                                <td><button class="btn btn-sm btn-outline-danger remove-row-btn">&times;</button></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    <button id="add-asset-btn" class="btn btn-sm btn-outline-primary">+ Add Asset</button>
+                                </div>
+                                <!-- Itemized Liabilities -->
+                                <div class="col-lg-6">
+                                    <h5 class="ratio-group-title">Itemized Liabilities (Debt)</h5>
+                                    <table class="table table-sm">
+                                        <tbody id="liabilities-table-body">
+                                            {% for liability in liabilities %}
+                                            <tr>
+                                                <td><input type="text" class="form-control form-control-sm liability-description" value="{{ liability.description }}"></td>
+                                                <td><input type="text" class="form-control form-control-sm number-input liability-amount" value="{{ '{:,.0f}'.format(liability.amount) }}"></td>
+                                                <td><button class="btn btn-sm btn-outline-danger remove-row-btn">&times;</button></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    <button id="add-liability-btn" class="btn btn-sm btn-outline-primary">+ Add Liability</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr>
             <div class="row">
                 <!-- Operational Parameters -->
                 <div class="col-lg-6">
@@ -34,10 +128,10 @@
                 <div class="col-lg-6">
                     <h5 class="ratio-group-title">Balance Sheet</h5>
                     <div class="row">
-                        <div class="col-md-6 mb-3"><label for="currentAssets" class="form-label">Current Assets ($)</label><input type="text" class="form-control number-input" id="currentAssets" value="{{ '{:,.0f}'.format(current_assets) }}" step="500"></div>
-                        <div class="col-md-6 mb-3"><label for="currentLiabilities" class="form-label">Current Liabilities ($)</label><input type="text" class="form-control number-input" id="currentLiabilities" value="{{ '{:,.0f}'.format(current_liabilities) }}" step="500"></div>
-                        <div class="col-md-6 mb-3"><label for="totalAssets" class="form-label">Total Assets ($)</label><input type="text" class="form-control number-input" id="totalAssets" value="{{ '{:,.0f}'.format(total_assets) }}" step="1000"></div>
-                        <div class="col-md-6 mb-3"><label for="totalDebt" class="form-label">Total Debt ($)</label><input type="text" class="form-control number-input" id="totalDebt" value="{{ '{:,.0f}'.format(total_debt) }}" step="1000"></div>
+                        <div class="col-md-6 mb-3"><label for="currentAssets" class="form-label">Current Assets ($)</label><input type="text" class="form-control number-input" id="currentAssets" value="{{ '{:,.0f}'.format(current_assets) }}"></div>
+                        <div class="col-md-6 mb-3"><label for="currentLiabilities" class="form-label">Current Liabilities ($)</label><input type="text" class="form-control number-input" id="currentLiabilities" value="{{ '{:,.0f}'.format(current_liabilities) }}"></div>
+                        <div class="col-md-6 mb-3"><label for="totalAssets" class="form-label">Total Assets ($)</label><input type="text" class="form-control number-input" id="totalAssets" value="{{ '{:,.0f}'.format(total_assets) }}" readonly></div>
+                        <div class="col-md-6 mb-3"><label for="totalDebt" class="form-label">Total Debt ($)</label><input type="text" class="form-control number-input" id="totalDebt" value="{{ '{:,.0f}'.format(total_debt) }}" readonly></div>
                         <div class="col-md-6 mb-3"><label for="interestExpense" class="form-label">Annual Interest Expense ($)</label><input type="text" class="form-control number-input" id="interestExpense" value="{{ '{:,.0f}'.format(interest_expense) }}" step="100"></div>
                     </div>
                 </div>
@@ -46,25 +140,31 @@
     </div>
 
     <!-- Seasonality -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h2>Seasonality Adjustment <small class="text-muted">(e.g., 1.2 for 20% busier, 0.8 for 20% slower)</small></h2>
-        </div>
-        <div class="card-body">
-            <div id="seasonality-inputs" class="row">
-                {% set months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] %}
-                {% for i in range(12) %}
-                <div class="col-md-1 col-sm-3 mb-2">
-                    <label for="seasonality-{{ i }}" class="form-label small">{{ months[i] }}</label>
-                    <input type="number" class="form-control form-control-sm seasonality-input" 
-                           id="seasonality-{{ i }}" 
-                           value="{{ seasonality[i] }}" 
-                           step="0.1" 
-                           min="0">
-                </div>
-                {% endfor %}
-                <div class="col-12 mt-2">
-                    <button id="normalize-seasonality" class="btn btn-sm btn-outline-secondary">Normalize (Set Average to 1)</button>
+    <div class="accordion" id="seasonalityAccordion">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingSeasonality">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeasonality" aria-expanded="false" aria-controls="collapseSeasonality">
+                    Seasonality Adjustment <small class="text-muted ms-2">(e.g., 1.2 for 20% busier, 0.8 for 20% slower)</small>
+                </button>
+            </h2>
+            <div id="collapseSeasonality" class="accordion-collapse collapse" aria-labelledby="headingSeasonality" data-bs-parent="#seasonalityAccordion">
+                <div class="accordion-body">
+                    <div id="seasonality-inputs" class="row">
+                        {% set months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] %}
+                        {% for i in range(12) %}
+                        <div class="col-md-1 col-sm-3 mb-2">
+                            <label for="seasonality-{{ i }}" class="form-label small">{{ months[i] }}</label>
+                            <input type="number" class="form-control form-control-sm seasonality-input" 
+                                   id="seasonality-{{ i }}" 
+                                   value="{{ seasonality[i] }}" 
+                                   step="0.1" 
+                                   min="0">
+                        </div>
+                        {% endfor %}
+                        <div class="col-12 mt-2">
+                            <button id="normalize-seasonality" class="btn btn-sm btn-outline-secondary">Normalize (Set Average to 1)</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -196,17 +296,37 @@
         </div>
     </div>
 
-    <!-- Monthly Cash Flow Chart -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h2>Monthly Cash Flow</h2>
-        </div>
-        <div class="card-body">
-            {% if forecast and forecast.monthly %}
-            <div id="chart-container" style="position: relative; height:300px; width:100%">
-                <canvas id="cashFlowChart"></canvas>
+    <!-- Charts Section -->
+    <div class="row">
+        <!-- Monthly Cash Flow Chart -->
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Monthly Net Profit (Cash Flow)</h2>
+                </div>
+                <div class="card-body">
+                    {% if forecast and forecast.monthly %}
+                    <div style="position: relative; height:250px; width:100%">
+                        <canvas id="cashFlowChart"></canvas>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% endif %}
+        </div>
+        <!-- Revenue vs Expenses Chart -->
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Monthly Revenue vs. Expenses</h2>
+                </div>
+                <div class="card-body">
+                    {% if forecast and forecast.monthly %}
+                    <div style="position: relative; height:250px; width:100%">
+                        <canvas id="revenueExpenseChart"></canvas>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -240,6 +360,7 @@
     };
 
     let cashFlowChart;
+    let revenueExpenseChart;
     const drawCashFlowChart = () => {
         if (!forecastData || !forecastData.monthly) return;
 
@@ -248,7 +369,7 @@
         const data = forecastData.monthly.map(m => m.net_profit);
 
         if (cashFlowChart) {
-            cashFlowChart.data.datasets[0].data = data;
+            cashFlowChart.data.datasets[0].data = data; // Update data
             cashFlowChart.update();
         } else {
             cashFlowChart = new Chart(ctx, {
@@ -268,6 +389,54 @@
                     maintainAspectRatio: false,
                     scales: { y: { beginAtZero: true } },
                     plugins: { tooltip: { callbacks: { label: (c) => `Net Profit: ${formatCurrency(c.raw)}` } } }
+                }
+            });
+        }
+    };
+
+    const drawRevenueExpenseChart = () => {
+        if (!forecastData || !forecastData.monthly) return;
+
+        const ctx = document.getElementById('revenueExpenseChart').getContext('2d');
+        const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const revenueData = forecastData.monthly.map(m => m.revenue);
+        const expenseData = forecastData.monthly.map(m => m.cogs + m.operating_expenses + m.tax); // Total expenses including tax
+        const netProfitData = forecastData.monthly.map(m => m.net_profit);
+
+        if (revenueExpenseChart) {
+            revenueExpenseChart.data.datasets[0].data = expenseData;
+            revenueExpenseChart.data.datasets[1].data = netProfitData;
+            revenueExpenseChart.update();
+        } else {
+            revenueExpenseChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Expenses (COGS + OpEx + Tax)',
+                        data: expenseData,
+                        backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                    }, {
+                        label: 'Net Profit',
+                        data: netProfitData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${formatCurrency(c.raw)}` } }
+                    }
                 }
             });
         }
@@ -295,6 +464,7 @@
     // Initial display update
     document.addEventListener('DOMContentLoaded', () => {
         drawCashFlowChart();
+        drawRevenueExpenseChart();
         updateDisplay('annual'); // Default to annual view
     });
 
@@ -304,13 +474,22 @@
     const taxSlider = document.getElementById('taxRate');
     const taxValue = document.getElementById('taxRateValue');
     const annualExpensesInput = document.getElementById('annualExpenses');
-    const totalAssetsInput = document.getElementById('totalAssets'); // New: Get total assets input
+    const totalAssetsInput = document.getElementById('totalAssets');
     const totalDebtInput = document.getElementById('totalDebt');
     const interestExpenseInput = document.getElementById('interestExpense');
     const currentAssetsInput = document.getElementById('currentAssets');
     const currentLiabilitiesInput = document.getElementById('currentLiabilities');
     const depreciationInput = document.getElementById('depreciation');
     const seasonalityInputs = document.querySelectorAll('.seasonality-input');
+
+    // --- Itemized List Management ---
+    const updateTotals = () => {
+        const totalAssets = Array.from(document.querySelectorAll('.asset-amount')).reduce((sum, input) => sum + parseFormattedNumber(input.value), 0);
+        totalAssetsInput.value = formatNumberInput(totalAssets);
+
+        const totalDebt = Array.from(document.querySelectorAll('.liability-amount')).reduce((sum, input) => sum + parseFormattedNumber(input.value), 0);
+        totalDebtInput.value = formatNumberInput(totalDebt);
+    };
 
     const recalculate = () => {
         const cogs = cogsSlider.value;
@@ -323,6 +502,16 @@
         const currentLiabilities = parseFormattedNumber(currentLiabilitiesInput.value);
         const depreciation = parseFormattedNumber(depreciationInput.value);
         const seasonality = Array.from(seasonalityInputs).map(input => parseFloat(input.value) || 0);
+        
+        const assetsList = Array.from(document.querySelectorAll('#assets-table-body tr')).map(row => ({
+            description: row.querySelector('.asset-description').value,
+            amount: parseFormattedNumber(row.querySelector('.asset-amount').value)
+        }));
+
+        const liabilitiesList = Array.from(document.querySelectorAll('#liabilities-table-body tr')).map(row => ({
+            description: row.querySelector('.liability-description').value,
+            amount: parseFormattedNumber(row.querySelector('.liability-amount').value)
+        }));
 
         cogsValue.textContent = cogs;
         taxValue.textContent = tax;
@@ -337,12 +526,12 @@
                 annual_operating_expenses: expenses,
                 tax_rate: tax,
                 seasonality: seasonality,
-                total_assets: assets, // New: Send assets to backend
-                total_debt: debt,
+                assets: assetsList,
+                liabilities: liabilitiesList,
                 interest_expense: interest,
                 current_assets: currentAssets,
                 current_liabilities: currentLiabilities,
-                depreciation: depreciation
+                depreciation: depreciation,
             }),
         })
         .then(response => response.json())
@@ -355,7 +544,8 @@
             // Update the display based on the currently selected view
             const selectedView = document.getElementById('annual-view').checked ? 'annual' : 'quarterly';
             updateDisplay(selectedView);
-            drawCashFlowChart(); // Also redraw the cash flow chart
+            drawCashFlowChart(); // Redraw the cash flow chart
+            drawRevenueExpenseChart(); // Redraw the new revenue/expense chart
         })
         .catch(error => console.error('Error recalculating forecast:', error));
     };
@@ -363,16 +553,46 @@
     cogsSlider.addEventListener('input', recalculate);
     taxSlider.addEventListener('input', recalculate);
     annualExpensesInput.addEventListener('input', recalculate);
-    totalAssetsInput.addEventListener('input', recalculate); // New: Add event listener
-    totalDebtInput.addEventListener('input', recalculate);
     interestExpenseInput.addEventListener('input', recalculate);
     currentAssetsInput.addEventListener('input', recalculate);
     currentLiabilitiesInput.addEventListener('input', recalculate);
     depreciationInput.addEventListener('input', recalculate);
     seasonalityInputs.forEach(input => input.addEventListener('input', recalculate));
 
+    const addRow = (tbodyId, descClass, amountClass) => {
+        const tbody = document.getElementById(tbodyId);
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm ${descClass}" value=""></td>
+            <td><input type="text" class="form-control form-control-sm number-input ${amountClass}" value="0"></td>
+            <td><button class="btn btn-sm btn-outline-danger remove-row-btn">&times;</button></td>
+        `;
+        tbody.appendChild(newRow);
+        // Add listeners to new elements
+        newRow.querySelector('.remove-row-btn').addEventListener('click', (e) => {
+            e.target.closest('tr').remove();
+            updateTotals();
+            recalculate();
+        });
+        newRow.querySelectorAll('input').forEach(input => input.addEventListener('input', () => {
+            updateTotals();
+            recalculate();
+        }));
+        newRow.querySelector('.number-input').addEventListener('focusout', (e) => {
+            e.target.value = formatNumberInput(e.target.value);
+        });
+    };
+
+    document.getElementById('add-asset-btn').addEventListener('click', () => addRow('assets-table-body', 'asset-description', 'asset-amount'));
+    document.getElementById('add-liability-btn').addEventListener('click', () => addRow('liabilities-table-body', 'liability-description', 'liability-amount'));
+
     // Add focusout listener for formatting number inputs
     document.querySelectorAll('.number-input').forEach(input => {
+        // Add input listeners to all number inputs for live recalculation
+        input.addEventListener('input', () => {
+            updateTotals();
+            recalculate();
+        });
         input.addEventListener('focusout', (e) => {
             e.target.value = formatNumberInput(e.target.value);
         });
@@ -393,6 +613,14 @@
         }
     });
 
+    // Add listeners to initially loaded rows
+    document.querySelectorAll('.remove-row-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.target.closest('tr').remove();
+            updateTotals();
+            recalculate();
+        });
+    });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
