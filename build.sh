@@ -4,7 +4,7 @@
 set -e
 
 python3 -m pip install --upgrade pip
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 
 # Run the database initialization function from main.py
 python3 -c "from main import vercel_build; vercel_build()"

@@ -21,6 +21,11 @@
             color: var(--bs-secondary-color); /* Use Bootstrap CSS variable for theme compatibility */
             margin-bottom: 1rem;
         }
+        /* Fix for input fields being too narrow on login/register pages */
+        .login-form .form-control,
+        .register-form .form-control {
+            width: 100%;
+        }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
