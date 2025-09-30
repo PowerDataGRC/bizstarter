@@ -73,6 +73,7 @@ class FinancialParams(db.Model):
     quarterly_net_profit = db.Column(db.Float, default=0.0)
     annual_net_profit = db.Column(db.Float, default=0.0)
     total_annual_revenue = db.Column(db.Float, default=0.0)
+    net_operating_income = db.Column(db.Float, default=0.0)
     annual_operating_expenses = db.Column(db.Float, default=0.0)
 
     # Loan details could also be stored here if it's a one-to-one relationship

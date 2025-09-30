@@ -59,10 +59,12 @@ def calculate_profitability(products, cogs_percentage=35.0, annual_operating_exp
         total_revenue = sum(f['revenue'] for f in forecasts)
         total_net_profit = sum(f['net_profit'] for f in forecasts)
         total_tax = sum(f['tax'] for f in forecasts)
+        total_gross_profit = sum(f['gross_profit'] for f in forecasts)
         return {
             "revenue": total_revenue,
             "net_profit": total_net_profit,
-            "tax": total_tax
+            "tax": total_tax,
+            "gross_profit": total_gross_profit
         }
 
     annual_summary = aggregate_forecast(monthly_forecasts)

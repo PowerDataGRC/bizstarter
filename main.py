@@ -28,7 +28,7 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Load assessment messages from the database
+# Define ASSESSMENT_MESSAGES globally, it will be populated during app startup
 ASSESSMENT_MESSAGES = {}
 
 @login_manager.user_loader
@@ -203,18 +203,22 @@ def financial_forecast():
         quarterly_net_profit = forecast.get('quarterly', {}).get('net_profit', 0)
         quarterly_revenue = forecast.get('quarterly', {}).get('revenue', 0)
 
+        # Calculate Net Operating Income (Gross Profit - Operating Expenses)
+        annual_gross_profit = forecast.get('annual', {}).get('gross_profit', 0)
+        net_operating_income = annual_gross_profit - annual_operating_expenses_value
+
         # Update forecast with basic ratios
         forecast['annual'].update(calculate_key_ratios(annual_net_profit, annual_revenue, total_assets))
         forecast['quarterly'].update(calculate_key_ratios(quarterly_net_profit, quarterly_revenue, total_assets))
 
         # Calculate and add advanced ratios
-        annual_tax = forecast.get('annual', {}).get('tax', 0)
-        ebitda = annual_net_profit + annual_tax + interest_expense
+        ebitda = net_operating_income + depreciation
         operating_cash_flow = annual_net_profit + depreciation
         advanced_ratios = calculate_advanced_ratios(current_assets, current_liabilities, total_debt, total_assets, ebitda, interest_expense, operating_cash_flow)
         forecast['annual'].update(advanced_ratios)
 
         # For quarterly, we'll scale down the annual inputs for a rough estimate
+        annual_tax = forecast.get('annual', {}).get('tax', 0)
         quarterly_ebitda = quarterly_net_profit + (annual_tax / 4) + (interest_expense / 4)
         quarterly_ocf = quarterly_net_profit + (depreciation / 4)
         # Note: Using total assets/liabilities for quarterly ratios is a simplification
@@ -225,6 +229,7 @@ def financial_forecast():
         financial_params.quarterly_net_profit = quarterly_net_profit
         financial_params.annual_net_profit = annual_net_profit
         financial_params.total_annual_revenue = annual_revenue
+        financial_params.net_operating_income = net_operating_income
         financial_params.annual_operating_expenses = annual_operating_expenses_value
         db.session.commit()
 
@@ -309,18 +314,22 @@ def recalculate_forecast():
     quarterly_net_profit = forecast.get('quarterly', {}).get('net_profit', 0)
     quarterly_revenue = forecast.get('quarterly', {}).get('revenue', 0)
 
+    # Calculate Net Operating Income (Gross Profit - Operating Expenses)
+    annual_gross_profit = forecast.get('annual', {}).get('gross_profit', 0)
+    net_operating_income = annual_gross_profit - annual_operating_expenses_value
+
     # Update forecast with basic ratios
     forecast['annual'].update(calculate_key_ratios(annual_net_profit, annual_revenue, total_assets))
     forecast['quarterly'].update(calculate_key_ratios(quarterly_net_profit, quarterly_revenue, total_assets))
     
     # Calculate and add advanced ratios
-    annual_tax = forecast.get('annual', {}).get('tax', 0)
-    ebitda = annual_net_profit + annual_tax + interest_expense
+    ebitda = net_operating_income + depreciation
     operating_cash_flow = annual_net_profit + depreciation
     advanced_ratios = calculate_advanced_ratios(current_assets, current_liabilities, total_debt, total_assets, ebitda, interest_expense, operating_cash_flow)
     forecast['annual'].update(advanced_ratios)
 
     # For quarterly, we'll scale down the annual inputs for a rough estimate
+    annual_tax = forecast.get('annual', {}).get('tax', 0)
     quarterly_ebitda = quarterly_net_profit + (annual_tax / 4) + (interest_expense / 4)
     quarterly_ocf = quarterly_net_profit + (depreciation / 4)
     # Note: Using total assets/liabilities for quarterly ratios is a simplification
@@ -331,6 +340,7 @@ def recalculate_forecast():
     params.quarterly_net_profit = quarterly_net_profit
     params.annual_net_profit = annual_net_profit
     params.total_annual_revenue = annual_revenue
+    params.net_operating_income = net_operating_income
     db.session.commit()
 
     return jsonify(forecast)
@@ -399,6 +409,7 @@ def loan_calculator():
     annual_net_profit = params.annual_net_profit
     total_annual_revenue = params.total_annual_revenue
     annual_operating_expenses = params.annual_operating_expenses
+    net_operating_income = params.net_operating_income
 
     monthly_payment = None
     schedule = None
@@ -432,10 +443,6 @@ def loan_calculator():
 
         if monthly_payment is not None and monthly_payment > 0:
             # DSCR = Net Operating Income / Total Debt Service
-            # Net Operating Income is often approximated as EBITDA.
-            # Here, we'll use Annual Net Profit + Interest portion of debt. Since we don't have interest as a separate input,
-            # we'll use a common proxy: Annual Net Profit + Annual Operating Expenses.
-            net_operating_income = annual_net_profit
             total_debt_service = monthly_payment * 12
 
             dscr = calculate_dscr(net_operating_income, total_debt_service)
@@ -491,13 +498,32 @@ def export_forecast():
 def vercel_build():
     """Function to be called by Vercel during the build process."""
     with app.app_context():
+        # This is safe for Vercel's ephemeral filesystem
         db.create_all()
         init_db(app)
+        # Also load messages during Vercel build
+        global ASSESSMENT_MESSAGES
+        ASSESSMENT_MESSAGES = get_assessment_messages()
 
 if __name__ == '__main__':
-    vercel_build() # Run the build process for local development too
-    app.run(debug=True)
+    with app.app_context():
+        # For local development, check if a migration is needed
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        if not inspector.has_table('financial_params') or 'net_operating_income' not in [c['name'] for c in inspector.get_columns('financial_params')]:
+            print("Database schema is outdated or does not exist. Recreating database...")
+            # This is a destructive action, suitable for local dev.
+            # It will delete all existing data.
+            db.drop_all()
+            db.create_all()
+            init_db(app)
+            print("Database recreated successfully.")
+        
+        # Load messages for local development
+        ASSESSMENT_MESSAGES = get_assessment_messages()
+        if not ASSESSMENT_MESSAGES:
+            print("Warning: ASSESSMENT_MESSAGES dictionary is empty. Seeding database...")
+            init_db(app) # Seed the DB if it's empty
+            ASSESSMENT_MESSAGES = get_assessment_messages()
 
-# Load assessment messages globally after app context is available
-with app.app_context():
-    ASSESSMENT_MESSAGES = get_assessment_messages()
+    app.run(debug=True)
