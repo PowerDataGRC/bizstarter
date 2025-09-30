@@ -34,12 +34,16 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Define ASSESSMENT_MESSAGES globally, it will be populated during app startup
-ASSESSMENT_MESSAGES = {}
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.before_request
+def load_assessment_messages():
+    """Load assessment messages from DB into the request context if not already present."""
+    from flask import g
+    if 'assessment_messages' not in g:
+        g.assessment_messages = get_assessment_messages()
 
 @app.route("/")
 def index():
@@ -407,6 +411,7 @@ def logout():
 @login_required
 def loan_calculator():
     params = current_user.financial_params
+    from flask import g
     if not params:
         return redirect(url_for('financial_forecast'))
 
@@ -454,18 +459,18 @@ def loan_calculator():
             dscr = calculate_dscr(net_operating_income, total_debt_service)
 
             if dscr < 1.0:
-                dscr_status = ASSESSMENT_MESSAGES.get('high_risk', {}).get('dscr_status', '')
+                dscr_status = g.assessment_messages.get('high_risk', {}).get('dscr_status', '')
             elif dscr < 1.25:
-                dscr_status = ASSESSMENT_MESSAGES.get('medium_risk', {}).get('dscr_status', '')
+                dscr_status = g.assessment_messages.get('medium_risk', {}).get('dscr_status', '')
             else:
-                dscr_status = ASSESSMENT_MESSAGES.get('low_risk', {}).get('dscr_status', '')
+                dscr_status = g.assessment_messages.get('low_risk', {}).get('dscr_status', '')
 
             if monthly_net_profit < monthly_payment * 1.5:
-                assessment = ASSESSMENT_MESSAGES['medium_risk']
+                assessment = g.assessment_messages.get('medium_risk')
             elif monthly_net_profit < monthly_payment:
-                 assessment = ASSESSMENT_MESSAGES['high_risk']
+                 assessment = g.assessment_messages.get('high_risk')
             else:
-                assessment = ASSESSMENT_MESSAGES['low_risk']
+                assessment = g.assessment_messages.get('low_risk')
 
     return render_template('loan-calculator.html', 
                            quarterly_net_profit=quarterly_net_profit,
@@ -507,9 +512,6 @@ def vercel_build():
         # This is safe for Vercel's ephemeral filesystem
         db.create_all()
         init_db(app)
-        # Also load messages during Vercel build
-        global ASSESSMENT_MESSAGES
-        ASSESSMENT_MESSAGES = get_assessment_messages()
 
 if __name__ == '__main__':
     with app.app_context():
@@ -525,11 +527,4 @@ if __name__ == '__main__':
             init_db(app)
             print("Database recreated successfully.")
         
-        # Load messages for local development
-        ASSESSMENT_MESSAGES = get_assessment_messages()
-        if not ASSESSMENT_MESSAGES:
-            print("Warning: ASSESSMENT_MESSAGES dictionary is empty. Seeding database...")
-            init_db(app) # Seed the DB if it's empty
-            ASSESSMENT_MESSAGES = get_assessment_messages()
-
     app.run(debug=True)
