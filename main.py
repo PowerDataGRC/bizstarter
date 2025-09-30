@@ -15,13 +15,19 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Database Configuration ---
-# Use Vercel Postgres URL if available (in production), otherwise use local SQLite
-if os.environ.get('POSTGRES_URL'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['POSTGRES_URL'].replace("postgres://", "postgresql://")
+# Use production database URL if available, otherwise use local SQLite
+prod_db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+if prod_db_url:
+    # Replace postgres:// with postgresql:// for SQLAlchemy compatibility
+    prod_db_url = prod_db_url.replace("postgres://", "postgresql://")
+    # Ensure SSL is required for production databases
+    if 'sslmode' not in prod_db_url:
+        prod_db_url += "?sslmode=require"
+    app.config['SQLALCHEMY_DATABASE_URI'] = prod_db_url
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bizstarter.db'
 
-from models import User, Product, Expense, FinancialParams, Asset, Liability
+from models import User, Product, Expense, FinancialParams, Asset, Liability, AssessmentMessage
 
 # Initialize extensions
 db.init_app(app)
@@ -510,7 +516,7 @@ if __name__ == '__main__':
         # For local development, check if a migration is needed
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
-        if not inspector.has_table('financial_params') or 'net_operating_income' not in [c['name'] for c in inspector.get_columns('financial_params')]:
+        if not inspector.has_table('assessment_message') or not inspector.has_table('financial_params') or 'net_operating_income' not in [c['name'] for c in inspector.get_columns('financial_params')]:
             print("Database schema is outdated or does not exist. Recreating database...")
             # This is a destructive action, suitable for local dev.
             # It will delete all existing data.

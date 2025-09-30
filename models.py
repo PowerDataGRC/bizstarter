@@ -81,3 +81,11 @@ class FinancialParams(db.Model):
     loan_interest_rate = db.Column(db.Float, nullable=True)
     loan_term = db.Column(db.Integer, nullable=True)
     loan_monthly_payment = db.Column(db.Float, nullable=True)
+
+class AssessmentMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    risk_level = db.Column(db.String(50), unique=True, nullable=False)
+    status = db.Column(db.String(100), nullable=False)
+    caption = db.Column(db.Text, nullable=False)
+    status_class = db.Column(db.String(50), nullable=False)
+    dscr_status = db.Column(db.Text, nullable=False)
