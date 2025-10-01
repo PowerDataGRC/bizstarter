@@ -1,5 +1,6 @@
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.chart import BarChart, LineChart, Reference, Series
 from openpyxl.utils import get_column_letter
 from io import BytesIO
 
@@ -74,6 +75,23 @@ def create_forecast_spreadsheet(products, operating_expenses, cogs_percentage, l
         for cell in row:
             cell.number_format = currency_format
 
+    # --- Chart for Quarterly Revenue ---
+    chart1 = BarChart()
+    chart1.type = "col"
+    chart1.style = 10
+    chart1.grouping = "stacked"
+    chart1.title = "Quarterly Revenue by Product"
+    chart1.y_axis.title = "Revenue"
+    chart1.x_axis.title = "Quarter"
+    chart1.y_axis.number_format = currency_format
+
+    data = Reference(ws_revenue, min_col=2, min_row=2, max_col=ws_revenue.max_column - 1, max_row=ws_revenue.max_row)
+    cats = Reference(ws_revenue, min_col=1, min_row=3, max_row=ws_revenue.max_row)
+    chart1.add_data(data, titles_from_data=True)
+    chart1.set_categories(cats)
+    chart1.shape = ""
+    ws_revenue.add_chart(chart1, "A8")
+
     # --- Sheet 2: Annual P&L Summary ---
     ws_pnl = wb.create_sheet(title="Annual P&L Summary")
     ws_pnl['A1'] = 'Profit & Loss Summary (USD)'
@@ -146,28 +164,57 @@ def create_forecast_spreadsheet(products, operating_expenses, cogs_percentage, l
         if cell.row > 2:
             cell.number_format = '0.00'
 
+    # --- Chart for P&L Summary ---
+    chart2 = LineChart()
+    chart2.style = 13
+    chart2.title = "5-Year Financial Projections"
+    chart2.y_axis.title = "Amount (USD)"
+    chart2.x_axis.title = "Year"
+    chart2.y_axis.number_format = currency_format
 
-    # --- Sheet 2: Loan Amortization ---
+    # X-Axis labels (Years)
+    labels = Reference(ws_pnl, min_col=1, min_row=3, max_row=ws_pnl.max_row)
+    chart2.set_categories(labels)
+
+    # Data series (Total Revenue, Gross Profit, Net Income)
+    revenue_series_data = Reference(ws_pnl, min_col=2, min_row=2, max_row=ws_pnl.max_row)
+    revenue_series = Series(revenue_series_data, title_from_data=True)
+
+    gprofit_series_data = Reference(ws_pnl, min_col=4, min_row=2, max_row=ws_pnl.max_row)
+    gprofit_series = Series(gprofit_series_data, title_from_data=True)
+
+    netincome_series_data = Reference(ws_pnl, min_col=10, min_row=2, max_row=ws_pnl.max_row)
+    netincome_series = Series(netincome_series_data, title_from_data=True)
+
+    chart2.series.append(revenue_series)
+    chart2.series.append(gprofit_series)
+    chart2.series.append(netincome_series)
+    ws_pnl.add_chart(chart2, "A10")
+
+    # --- Sheet 3: Loan Payment Schedule ---
     if loan_details and loan_details.get('schedule'):
-        ws2 = wb.create_sheet(title="Loan Amortization") # This will now be sheet 3
+        ws2 = wb.create_sheet(title="Loan Payment Schedule")
 
         # Loan Summary
-        ws2['A1'] = 'Loan Summary'
+        ws2['A1'] = 'Loan Payment Schedule'
         ws2['A1'].font = title_font
+        ws2['A1'].fill = title_fill
+        ws2.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
         ws2.append(['Loan Amount', loan_details.get('loan_amount')])
         ws2.append(['Annual Interest Rate (%)', loan_details.get('interest_rate')])
         ws2.append(['Loan Term (Years)', loan_details.get('loan_term')])
         ws2.append(['Monthly Payment', loan_details.get('monthly_payment')])
         
         # Apply formatting to summary
-        for row_num in range(2, 6):
-            ws2[f'B{row_num}'].number_format = currency_format if row_num in [2, 5] else '0.00'
+        for row_num in range(3, 7): # Adjusted for merged title cell
+            ws2[f'B{row_num}'].number_format = currency_format if row_num in [3, 6] else '0.00'
 
         # Amortization Schedule Headers
         schedule_headers = ['Month', 'Principal Payment', 'Interest Payment', 'Remaining Balance']
         ws2.append([]) # Spacer row
+        header_row_num = 8
         ws2.append(schedule_headers)
-        for cell in ws2[7]:
+        for cell in ws2[header_row_num]:
             cell.font = header_font
             cell.fill = header_fill
 
@@ -181,9 +228,46 @@ def create_forecast_spreadsheet(products, operating_expenses, cogs_percentage, l
             ])
         
         # Apply currency formatting to schedule
-        for row in ws2.iter_rows(min_row=8, max_row=ws2.max_row, min_col=2, max_col=4):
+        for row in ws2.iter_rows(min_row=header_row_num + 1, max_row=ws2.max_row, min_col=2, max_col=4):
             for cell in row:
                 cell.number_format = currency_format
+        
+        # --- Chart for Loan Amortization ---
+        chart3 = BarChart()
+        chart3.type = "col"
+        chart3.style = 10
+        chart3.grouping = "stacked"
+        chart3.title = "Loan Payments (Principal vs. Interest)"
+        chart3.y_axis.title = "Payment Amount"
+        chart3.x_axis.title = "Month"
+        chart3.y_axis.number_format = currency_format
+
+        # Aggregate data yearly if term is long, otherwise show monthly
+        loan_term_years = loan_details.get('loan_term', 0)
+        if loan_term_years >= 1:
+            # Create a new hidden sheet for yearly chart data
+            ws_chart_data = wb.create_sheet(title="LoanChartData")
+            ws_chart_data.sheet_state = 'hidden'
+            ws_chart_data.append(['Year', 'Principal', 'Interest'])
+            yearly_data = {}
+            for item in loan_details['schedule']:
+                year = (item['month'] - 1) // 12 + 1
+                if year not in yearly_data: yearly_data[year] = {'p': 0, 'i': 0}
+                yearly_data[year]['p'] += item['principal_payment']
+                yearly_data[year]['i'] += item['interest_payment']
+            for year, data in sorted(yearly_data.items()):
+                ws_chart_data.append([f"Year {year}", data['p'], data['i']])
+            
+            data_ref = Reference(ws_chart_data, min_col=2, min_row=1, max_col=3, max_row=ws_chart_data.max_row)
+            cats_ref = Reference(ws_chart_data, min_col=1, min_row=2, max_row=ws_chart_data.max_row)
+            chart3.x_axis.title = "Year"
+        else: # Monthly data for short loans
+            data_ref = Reference(ws2, min_col=2, min_row=header_row_num, max_col=3, max_row=ws2.max_row)
+            cats_ref = Reference(ws2, min_col=1, min_row=header_row_num + 1, max_row=ws2.max_row)
+
+        chart3.add_data(data_ref, titles_from_data=True)
+        chart3.set_categories(cats_ref)
+        ws2.add_chart(chart3, "F2")
 
     # Adjust column widths for all sheets
     for sheet in wb.worksheets:

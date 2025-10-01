@@ -31,7 +31,7 @@
                     <form method="POST">
                         <div class="mb-2">
                             <label for="loan_amount" class="form-label small">Loan Amount ($)</label>
-                            <input type="number" class="form-control form-control-sm" id="loan_amount" name="loan_amount" value="{{ form_data.loan_amount or '25000' }}" required>
+                            <input type="text" class="form-control form-control-sm" id="loan_amount" name="loan_amount" value="{{ '{:,.0f}'.format(form_data.loan_amount) if form_data.loan_amount else '25,000' }}" required>
                         </div>
                         <div class="mb-2">
                             <label for="interest_rate" class="form-label small">Annual Interest Rate (%)</label>
@@ -112,6 +112,41 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% if schedule %}
 <script>
+    // --- Number Formatting ---
+    const formatNumberInput = (num) => {
+        if (num === null || num === undefined || num === '') return '';
+        // Remove existing commas and parse as float, then format with commas.
+        const number = parseFloat(String(num).replace(/,/g, ''));
+        return isNaN(number) ? '' : number.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    };
+
+    const parseFormattedNumber = (str) => {
+        if (typeof str !== 'string') return str;
+        return parseFloat(str.replace(/,/g, '')) || 0;
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const loanAmountInput = document.getElementById('loan_amount');
+
+        // Format the number with commas as the user types
+        loanAmountInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            const numericValue = parseFormattedNumber(value);
+            const formattedValue = formatNumberInput(numericValue);
+            e.target.value = formattedValue;
+        });
+
+        // Remove formatting on focus for easier editing
+        loanAmountInput.addEventListener('focus', (e) => {
+            e.target.value = parseFormattedNumber(e.target.value) || '';
+        });
+
+        // Remove formatting before form submission
+        loanAmountInput.form.addEventListener('submit', () => {
+            loanAmountInput.value = parseFormattedNumber(loanAmountInput.value);
+        });
+    });
+
     const scheduleData = {{ schedule | tojson | safe }};
     const loanTermInYears = {{ form_data.loan_term or 0 }};
     const ctx = document.getElementById('loanChart').getContext('2d');

@@ -449,7 +449,7 @@ def loan_calculator():
         session['loan_details'] = {
             **form_data,
             'monthly_payment': monthly_payment,
-            # 'schedule' can be large, so we might not want to store it if not necessary for re-display
+            'schedule': schedule
         }
 
         if monthly_payment is not None and monthly_payment > 0:
