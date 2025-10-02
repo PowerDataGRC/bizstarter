@@ -9,7 +9,7 @@ from profitability import calculate_profitability
 from loan import calculate_loan_schedule
 from financial_ratios import calculate_dscr, calculate_key_ratios, calculate_advanced_ratios # Import the new functions
 from export import create_forecast_spreadsheet
-from database import init_db, get_assessment_messages
+from database import get_assessment_messages
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -38,6 +38,29 @@ db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
 login_manager.login_view = 'login'
+
+@app.cli.command("seed-db")
+def seed_db_command():
+    """Seeds the database with initial data (e.g., assessment messages)."""
+    if AssessmentMessage.query.first():
+        print("Assessment messages table is not empty. Skipping seed.")
+        return
+
+    print("Seeding assessment_messages table...")
+    try:
+        with open('assessment_messages.json', 'r') as f:
+            json_data = json.load(f)
+        
+        for risk_level, data in json_data.items():
+            message = AssessmentMessage(**data, risk_level=risk_level)
+            db.session.add(message)
+        db.session.commit()
+        print("Assessment messages seeded successfully.")
+    except FileNotFoundError:
+        print("Warning: assessment_messages.json not found. Skipping seed.")
+    except Exception as e:
+        print(f"Error seeding assessment messages: {e}")
+        db.session.rollback()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -595,8 +618,8 @@ def export_forecast():
 
 if __name__ == '__main__':
     with app.app_context():
-        # The local database will now be managed by Flask-Migrate commands.
-        # You can run `flask db upgrade` to apply migrations.
+        # This block is for running the local development server.
+        # Database management is handled by `flask db` commands.
+        # Initial data seeding is handled by `flask seed-db` command.
         pass
-        
     app.run(debug=True)
