@@ -121,7 +121,29 @@ def startup_activities():
     # they will see an empty list, which is acceptable.
     # All new users will have activities seeded upon registration.
     if not activities:
-        flash('No startup activities found. You can add them below.', 'info')
+     #   flash('No startup activities found. You can add them below.', 'info')
+
+       initial_activities = [
+            {'activity': 'Conduct Market Research', 'description': 'Analyze competitors and demand', 'weight': 10, 'progress': 0},
+            {'activity': 'Write a Business Plan', 'description': 'Mission, strategies, financials, goals', 'weight': 12, 'progress': 0},
+            {'activity': 'Choose a Business Name', 'description': 'Brand and legal name selection', 'weight': 4, 'progress': 0},
+            {'activity': 'Pick Business Structure (LLC, Corp, etc.)', 'description': 'Select legal form and file with state', 'weight': 7, 'progress': 0},
+            {'activity': 'Register Entity & Obtain Tax IDs', 'description': 'File paperwork; get EIN', 'weight': 7, 'progress': 0},
+            {'activity': 'Obtain Licenses, Permits, Zoning Approvals', 'description': 'Meet all regulatory requirements', 'weight': 8, 'progress': 0},
+            {'activity': 'Open Business Bank Account', 'description': 'Financial setup and credit', 'weight': 4, 'progress': 0},
+            {'activity': 'Arrange Funding/Cash Flow', 'description': 'Secure startup, operating, or loan funds', 'weight': 8, 'progress': 0},
+            {'activity': 'Set Up Accounting & Payroll Systems', 'description': 'Bookkeeping, compliance, employee pay', 'weight': 6, 'progress': 0},
+            {'activity': 'Secure Business Insurance', 'description': 'Liability, property, workers’ comp, etc.', 'weight': 5, 'progress': 0},
+            {'activity': 'Choose Location, Lease, or Buy', 'description': 'Decide HQ, retail, or office space', 'weight': 6, 'progress': 0},
+            {'activity': 'Hire/Train Employees', 'description': 'Recruit, onboard, comply with reporting', 'weight': 6, 'progress': 0},
+            {'activity': 'Develop Website, Social Media, Branding', 'description': 'Marketing launch and digital presence', 'weight': 6, 'progress': 0},
+            {'activity': 'Purchase Equipment, Furniture, Inventory', 'description': 'Supplies and capital purchases', 'weight': 6, 'progress': 0},
+            {'activity': 'Prepare Operational & Privacy Policies', 'description': 'SOPs, data/privacy, contracts, legal docs', 'weight': 5, 'progress': 0}
+        ]
+       activities = [BusinessStartupActivity(**item, user_id=current_user.id) for item in initial_activities]
+       db.session.add_all(activities)
+       db.session.commit()
+       flash('No startup activities found. You can add them below.', 'info')
 
     total_weight = sum(act.weight for act in activities)
     return render_template('startup_activities.html', activities=activities, total_weight=total_weight)
