@@ -1,11 +1,12 @@
 {
-    "functions": {
-        "main.py": {
-            "memory": 1024,
-            "maxDuration": 15
+    "builds": [
+        {
+            "src": "main.py", 
+            "use": "@vercel/python",
+            "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
         }
-    },
+    ],
     "routes": [
-        { "src": "/(.*)", "dest": "main.py" }
+        { "src": "/(.*)", "dest": "/main.py" }
     ]
 }
