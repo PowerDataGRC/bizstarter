@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     liabilities = db.relationship('Liability', backref='user', lazy=True, cascade="all, delete-orphan")
     financial_params = db.relationship('FinancialParams', backref='user', uselist=False, cascade="all, delete-orphan")
 
+    startup_activities = db.relationship('BusinessStartupActivity', backref='user', lazy=True, cascade="all, delete-orphan")
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(200), nullable=False)
@@ -89,3 +90,14 @@ class AssessmentMessage(db.Model):
     caption = db.Column(db.Text, nullable=False)
     status_class = db.Column(db.String(50), nullable=False)
     dscr_status = db.Column(db.Text, nullable=False)
+
+class BusinessStartupActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    activity = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500), nullable=False)
+    weight = db.Column(db.Integer, nullable=False)
+    progress = db.Column(db.Integer, nullable=False, default=0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<Activity {self.activity}>'

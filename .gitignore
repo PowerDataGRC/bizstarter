@@ -1,2 +1,5 @@
 .venv
 .vercel
+instance/
+*.sqlite
+.env

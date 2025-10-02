@@ -1,6 +1,7 @@
 import os
 import json
 from flask import Flask, render_template, request, session, jsonify, send_file, redirect, url_for, flash
+from flask_migrate import Migrate
 from flask_login import UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db, login_manager
@@ -25,13 +26,17 @@ if prod_db_url:
         prod_db_url += "?sslmode=require"
     app.config['SQLALCHEMY_DATABASE_URI'] = prod_db_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bizstarter.db'
+    # Use absolute path for local SQLite DB to avoid ambiguity
+    instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+    os.makedirs(instance_path, exist_ok=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "bizstarter.db")}'
 
-from models import User, Product, Expense, FinancialParams, Asset, Liability, AssessmentMessage
+from models import User, Product, Expense, FinancialParams, Asset, Liability, AssessmentMessage, BusinessStartupActivity
 
 # Initialize extensions
 db.init_app(app)
 login_manager.init_app(app)
+migrate = Migrate(app, db)
 login_manager.login_view = 'login'
 
 @login_manager.user_loader
@@ -48,12 +53,97 @@ def load_assessment_messages():
 @app.route("/")
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for('product_detail'))
+        return redirect(url_for('intro'))
     return redirect(url_for('login'))
+
+@app.route("/intro")
+def intro():
+    return render_template('intro.html')
 
 @app.route("/library")
 def library():
     return render_template('library.html')
+
+@app.route('/startup-activities', methods=['GET', 'POST'])
+@login_required
+def startup_activities():
+    if request.method == 'POST':
+        # Clear existing activities for the current user only
+        BusinessStartupActivity.query.filter_by(user_id=current_user.id).delete()
+
+        activities = request.form.getlist('activity')
+        descriptions = request.form.getlist('description')
+        weights = request.form.getlist('weight')
+        progresses = request.form.getlist('progress')
+
+        total_weight = 0
+        new_activities = []
+
+        for i in range(len(activities)):
+            activity_text = activities[i].strip()
+            weight_val = weights[i].strip()
+            progress_val = progresses[i].strip()
+            if activity_text and weight_val: # Ensure row is not empty
+                try:
+                    weight = int(weight_val)
+                    progress = int(progress_val)
+                    total_weight += weight
+                    new_activities.append(
+                        BusinessStartupActivity(
+                            activity=activity_text,
+                            description=descriptions[i].strip(),
+                            weight=weight,
+                            progress=progress,
+                            user_id=current_user.id
+                        )
+                    )
+                except ValueError:
+                    flash('Invalid weight value entered. Please use numbers only.', 'danger')
+                    activities_data = zip(activities, descriptions, weights, progresses)
+                    return render_template('startup_activities.html', activities=activities_data, total_weight="Error"), 400
+
+        if total_weight > 100:
+            flash(f'Total weight cannot exceed 100%. Current total is {total_weight}%.', 'danger')
+            activities_data = zip(activities, descriptions, weights)
+            return render_template('startup_activities.html', activities=activities_data, total_weight=total_weight), 400
+
+        # If validation passes, add to session and commit
+        db.session.add_all(new_activities)
+        db.session.commit()
+
+        flash('Startup activities have been updated successfully!', 'success')
+        return redirect(url_for('startup_activities'))
+
+    # For GET request, get activities for the current user
+    activities = BusinessStartupActivity.query.filter_by(user_id=current_user.id).order_by(BusinessStartupActivity.id).all()
+
+    # If an existing user has no activities, populate them with the defaults.
+    if not activities:
+        initial_activities = [
+            {'activity': 'Conduct Market Research', 'description': 'Analyze competitors and demand', 'weight': 10, 'progress': 0},
+            {'activity': 'Write a Business Plan', 'description': 'Mission, strategies, financials, goals', 'weight': 12, 'progress': 0},
+            {'activity': 'Choose a Business Name', 'description': 'Brand and legal name selection', 'weight': 4, 'progress': 0},
+            {'activity': 'Pick Business Structure (LLC, Corp, etc.)', 'description': 'Select legal form and file with state', 'weight': 7, 'progress': 0},
+            {'activity': 'Register Entity & Obtain Tax IDs', 'description': 'File paperwork; get EIN', 'weight': 7, 'progress': 0},
+            {'activity': 'Obtain Licenses, Permits, Zoning Approvals', 'description': 'Meet all regulatory requirements', 'weight': 8, 'progress': 0},
+            {'activity': 'Open Business Bank Account', 'description': 'Financial setup and credit', 'weight': 4, 'progress': 0},
+            {'activity': 'Arrange Funding/Cash Flow', 'description': 'Secure startup, operating, or loan funds', 'weight': 8, 'progress': 0},
+            {'activity': 'Set Up Accounting & Payroll Systems', 'description': 'Bookkeeping, compliance, employee pay', 'weight': 6, 'progress': 0},
+            {'activity': 'Secure Business Insurance', 'description': 'Liability, property, workers’ comp, etc.', 'weight': 5, 'progress': 0},
+            {'activity': 'Choose Location, Lease, or Buy', 'description': 'Decide HQ, retail, or office space', 'weight': 6, 'progress': 0},
+            {'activity': 'Hire/Train Employees', 'description': 'Recruit, onboard, comply with reporting', 'weight': 6, 'progress': 0},
+            {'activity': 'Develop Website, Social Media, Branding', 'description': 'Marketing launch and digital presence', 'weight': 6, 'progress': 0},
+            {'activity': 'Purchase Equipment, Furniture, Inventory', 'description': 'Supplies and capital purchases', 'weight': 6, 'progress': 0},
+            {'activity': 'Prepare Operational & Privacy Policies', 'description': 'SOPs, data/privacy, contracts, legal docs', 'weight': 5, 'progress': 0}
+        ]
+        activities = [BusinessStartupActivity(**item, user_id=current_user.id) for item in initial_activities]
+        db.session.add_all(activities)
+        db.session.commit()
+
+    total_weight = sum(act.weight for act in activities)
+    return render_template('startup_activities.html', activities=activities, total_weight=total_weight)
+
+
 
 @app.route("/product-detail", methods=["GET", "POST"])
 @login_required
@@ -358,12 +448,12 @@ def recalculate_forecast():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('product_detail'))
+        return redirect(url_for('intro'))
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user and check_password_hash(user.password_hash, request.form.get('password')):
             login_user(user, remember=True)
-            return redirect(url_for('product_detail'))
+            return redirect(url_for('intro'))
         else:
             flash('Invalid username or password.', 'danger')
     return render_template('login.html')
@@ -371,7 +461,7 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('product_detail'))
+        return redirect(url_for('intro'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -395,6 +485,29 @@ def register():
         # Create an initial FinancialParams for the new user
         new_params = FinancialParams(user_id=new_user.id)
         db.session.add(new_params)
+        db.session.commit()
+
+        # Seed startup activities for the new user
+        initial_activities = [
+            {'activity': 'Conduct Market Research', 'description': 'Analyze competitors and demand', 'weight': 10, 'progress': 0},
+            {'activity': 'Write a Business Plan', 'description': 'Mission, strategies, financials, goals', 'weight': 12, 'progress': 0},
+            {'activity': 'Choose a Business Name', 'description': 'Brand and legal name selection', 'weight': 4, 'progress': 0},
+            {'activity': 'Pick Business Structure (LLC, Corp, etc.)', 'description': 'Select legal form and file with state', 'weight': 7, 'progress': 0},
+            {'activity': 'Register Entity & Obtain Tax IDs', 'description': 'File paperwork; get EIN', 'weight': 7, 'progress': 0},
+            {'activity': 'Obtain Licenses, Permits, Zoning Approvals', 'description': 'Meet all regulatory requirements', 'weight': 8, 'progress': 0},
+            {'activity': 'Open Business Bank Account', 'description': 'Financial setup and credit', 'weight': 4, 'progress': 0},
+            {'activity': 'Arrange Funding/Cash Flow', 'description': 'Secure startup, operating, or loan funds', 'weight': 8, 'progress': 0},
+            {'activity': 'Set Up Accounting & Payroll Systems', 'description': 'Bookkeeping, compliance, employee pay', 'weight': 6, 'progress': 0},
+            {'activity': 'Secure Business Insurance', 'description': 'Liability, property, workers’ comp, etc.', 'weight': 5, 'progress': 0},
+            {'activity': 'Choose Location, Lease, or Buy', 'description': 'Decide HQ, retail, or office space', 'weight': 6, 'progress': 0},
+            {'activity': 'Hire/Train Employees', 'description': 'Recruit, onboard, comply with reporting', 'weight': 6, 'progress': 0},
+            {'activity': 'Develop Website, Social Media, Branding', 'description': 'Marketing launch and digital presence', 'weight': 6, 'progress': 0},
+            {'activity': 'Purchase Equipment, Furniture, Inventory', 'description': 'Supplies and capital purchases', 'weight': 6, 'progress': 0},
+            {'activity': 'Prepare Operational & Privacy Policies', 'description': 'SOPs, data/privacy, contracts, legal docs', 'weight': 5, 'progress': 0}
+        ]
+        for item in initial_activities:
+            new_activity = BusinessStartupActivity(**item, user_id=new_user.id)
+            db.session.add(new_activity)
         db.session.commit()
 
         flash('Registration successful! Please log in.')
@@ -511,20 +624,14 @@ def vercel_build():
     with app.app_context():
         # This is safe for Vercel's ephemeral filesystem
         db.create_all()
+
+        
         init_db(app)
 
 if __name__ == '__main__':
     with app.app_context():
-        # For local development, check if a migration is needed
-        from sqlalchemy import inspect
-        inspector = inspect(db.engine)
-        if not inspector.has_table('assessment_message') or not inspector.has_table('financial_params') or 'net_operating_income' not in [c['name'] for c in inspector.get_columns('financial_params')]:
-            print("Database schema is outdated or does not exist. Recreating database...")
-            # This is a destructive action, suitable for local dev.
-            # It will delete all existing data.
-            db.drop_all()
-            db.create_all()
-            init_db(app)
-            print("Database recreated successfully.")
+        # The local database will now be managed by Flask-Migrate commands.
+        # You can run `flask db upgrade` to apply migrations.
+        pass
         
     app.run(debug=True)
