@@ -7,4 +7,5 @@ set -e
 python3 -m pip install -r requirements.txt
 
 # Run database migrations
-python3 -m flask --app main db upgrade
+# The 'db upgrade' command should be run manually against your production database.
+# It is removed from the build script to prevent build failures.
