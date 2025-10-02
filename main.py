@@ -134,26 +134,13 @@ def product_detail():
     products = current_user.products
     expenses = current_user.expenses
     financial_params = current_user.financial_params
-
-    # If no expenses in DB for this user, populate with defaults
+ 
+    # Initial data is now seeded at registration. If data is missing for an older user,
+    # they will see an empty state, which is the correct behavior.
     if not expenses:
-        expenses = [
-            Expense(item='Rent/Lease', amount=1200.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Utilities', amount=300.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Supplies', amount=150.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Marketing', amount=250.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Insurance', amount=100.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Salaries/Wages', amount=2000.0, frequency='monthly', readonly=True, user_id=current_user.id),
-            Expense(item='Legal', amount=100.0, frequency='monthly', readonly=True, user_id=current_user.id),
-        ]
-        db.session.add_all(expenses)
-        db.session.commit()
-    
-    # If no products in DB, provide 4 empty ones for initial display
+        flash('No expenses found. Default expenses are added for new users.', 'info')
     if not products:
-        products = [Product(description='', price=0.0, sales_volume=0, sales_volume_unit='monthly', user_id=current_user.id) for _ in range(4)]
-        db.session.add_all(products)
-        db.session.commit()
+        flash('No products found. You can add them on this page.', 'info')
 
     # Convert DB objects to dictionaries for JSON serialization
     products_dict = [p.to_dict() for p in products]
@@ -218,28 +205,13 @@ def financial_forecast():
     
     financial_params = current_user.financial_params
     if not financial_params:
-        financial_params = FinancialParams(user_id=current_user.id)
-        db.session.add(financial_params)
-        db.session.commit()
+        # This should not happen for users created after this fix.
+        # For older users, redirect them to a page where params can be set up.
+        flash('Financial parameters not found. Please visit the Product Detail page first.', 'warning')
+        return redirect(url_for('product_detail'))
 
     assets = current_user.assets
-    if not assets:
-        assets = [
-            Asset(description='Cash & Equivalents', amount=10000.0, user_id=current_user.id),
-            Asset(description='Inventory', amount=5000.0, user_id=current_user.id),
-            Asset(description='Equipment', amount=35000.0, user_id=current_user.id)
-        ]
-        db.session.add_all(assets)
-        db.session.commit()
-
     liabilities = current_user.liabilities
-    if not liabilities:
-        liabilities = [
-            Liability(description='Credit Card Debt', amount=5000.0, user_id=current_user.id),
-            Liability(description='Bank Loan', amount=20000.0, user_id=current_user.id)
-        ]
-        db.session.add_all(liabilities)
-        db.session.commit()
 
     assets_dict = [a.to_dict() for a in assets]
     liabilities_dict = [l.to_dict() for l in liabilities]
@@ -464,12 +436,7 @@ def register():
         db.session.add(new_user)
         db.session.commit()
 
-        # Create an initial FinancialParams for the new user
-        new_params = FinancialParams(user_id=new_user.id)
-        db.session.add(new_params)
-        db.session.commit()
-
-        # Seed startup activities for the new user
+        # --- Seed all initial data for the new user in one transaction ---
         initial_activities = [
             {'activity': 'Conduct Market Research', 'description': 'Analyze competitors and demand', 'weight': 10, 'progress': 0},
             {'activity': 'Write a Business Plan', 'description': 'Mission, strategies, financials, goals', 'weight': 12, 'progress': 0},
@@ -487,9 +454,34 @@ def register():
             {'activity': 'Purchase Equipment, Furniture, Inventory', 'description': 'Supplies and capital purchases', 'weight': 6, 'progress': 0},
             {'activity': 'Prepare Operational & Privacy Policies', 'description': 'SOPs, data/privacy, contracts, legal docs', 'weight': 5, 'progress': 0}
         ]
-        for item in initial_activities:
-            new_activity = BusinessStartupActivity(**item, user_id=new_user.id)
-            db.session.add(new_activity)
+        initial_expenses = [
+            Expense(item='Rent/Lease', amount=1200.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Utilities', amount=300.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Supplies', amount=150.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Marketing', amount=250.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Insurance', amount=100.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Salaries/Wages', amount=2000.0, frequency='monthly', readonly=True, user_id=new_user.id),
+            Expense(item='Legal', amount=100.0, frequency='monthly', readonly=True, user_id=new_user.id),
+        ]
+        initial_assets = [
+            Asset(description='Cash & Equivalents', amount=10000.0, user_id=new_user.id),
+            Asset(description='Inventory', amount=5000.0, user_id=new_user.id),
+            Asset(description='Equipment', amount=35000.0, user_id=new_user.id)
+        ]
+        initial_liabilities = [
+            Liability(description='Credit Card Debt', amount=5000.0, user_id=new_user.id),
+            Liability(description='Bank Loan', amount=20000.0, user_id=new_user.id)
+        ]
+        initial_products = [Product(description='', price=0.0, sales_volume=0, sales_volume_unit='monthly', user_id=new_user.id) for _ in range(4)]
+
+        # Add all initial data to the session
+        db.session.add(FinancialParams(user_id=new_user.id))
+        db.session.add_all([BusinessStartupActivity(**item, user_id=new_user.id) for item in initial_activities])
+        db.session.add_all(initial_expenses)
+        db.session.add_all(initial_assets)
+        db.session.add_all(initial_liabilities)
+        db.session.add_all(initial_products)
+
         db.session.commit()
 
         flash('Registration successful! Please log in.')
