@@ -7,4 +7,4 @@ set -e
 python3 -m pip install -r requirements.txt
 
 # Run database migrations
-python3 -m flask db upgrade
+python3 -m flask --app main db upgrade
