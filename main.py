@@ -82,10 +82,6 @@ with app.app_context():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.before_first_request
-def initialize_database():
-    pass # This function is no longer needed and can be removed.
-
 @app.before_request
 def load_assessment_messages():
     """Load assessment messages from DB into the request context if not already present."""
