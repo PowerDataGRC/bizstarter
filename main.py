@@ -28,11 +28,11 @@ if prod_db_url:
         "pool_pre_ping": True,
         "pool_recycle": 300
     }
-    # For remote DBs (like Neon), set connect_timeout and search_path
+    # For remote DBs (like Neon), set connect_timeout and a reliable search_path
     if 'localhost' not in prod_db_url:
-        # Parse the database name from the URL to set the search_path
-        db_name = make_url(prod_db_url).database
         connect_args = {"connect_timeout": 30}
+        # Use POSTGRES_DATABASE from Vercel/Neon env vars for a reliable search_path
+        db_name = os.environ.get('POSTGRES_DATABASE')
         if db_name:
             connect_args['options'] = f'-c search_path={db_name}'
         app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = connect_args
