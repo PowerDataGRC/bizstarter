@@ -2,7 +2,6 @@
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
-# Add the project root to the python path and run the migration
-export PYTHONPATH=.
-export FLASK_APP=main.py
-flask db upgrade
+
+# Directly invoke the migration using a python script to ensure context
+python -c "from flask_migrate import upgrade; from main import app; app.app_context().push(); upgrade()"
