@@ -1,5 +1,3 @@
 {
-    "scripts": {
-        "build": "bash build.sh"
-    }
+    "scripts": {}
 }
