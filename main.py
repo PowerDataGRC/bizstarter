@@ -25,13 +25,13 @@ if prod_db_url:
     # Add engine options for robust pooling with serverless DBs
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "pool_pre_ping": True,
-        "pool_recycle": 300
+        "pool_recycle": 300,
+        "connect_args": {}  # Initialize connect_args
     }
     # For remote DBs (like Neon), set connect_timeout and search_path
     if 'localhost' not in prod_db_url:
-        app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = {
-            "connect_timeout": 30
-        }
+        app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args']['connect_timeout'] = 30
+
         # Set search_path for providers like Neon.
         # It's better to parse the db name from the URL if possible.
         from sqlalchemy.engine.url import make_url
