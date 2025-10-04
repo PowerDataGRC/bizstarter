@@ -1,16 +1,18 @@
 <!doctype html>
 <html lang="en" data-bs-theme="light">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}BizStarter{% endblock %}</title>
-    
+
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
+
     <!-- Custom CSS - Must be after Bootstrap to override styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
 
@@ -19,53 +21,66 @@
             display: inline-block;
             margin-right: 0.5rem;
         }
+
         .ratio-group-title {
             font-weight: bold;
-            color: var(--bs-secondary-color); /* Use Bootstrap CSS variable for theme compatibility */
+            color: var(--bs-secondary-color);
+            /* Use Bootstrap CSS variable for theme compatibility */
             margin-bottom: 1rem;
         }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
+
 <body class="d-flex">
     <div class="sidebar d-flex flex-column p-3">
-        <a class="sidebar-brand d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none" href="{{ url_for('index') }}">
+        <a class="sidebar-brand d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none"
+            href="{{ url_for('index') }}">
             <span class="fs-4">📈 BizStarter</span>
         </a>
         <hr>
         <ul class="nav nav-pills flex-column mb-auto">
             <li class="nav-item">
-                <a href="{{ url_for('intro') }}" class="nav-link {% if request.endpoint == 'intro' %}active{% endif %}">Intro</a>
+                <a href="{{ url_for('intro') }}"
+                    class="nav-link {% if request.endpoint == 'intro' %}active{% endif %}">Intro</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('startup_activities') }}" class="nav-link {% if request.endpoint == 'startup_activities' %}active{% endif %}">Startup Activities</a>
+                <a href="{{ url_for('startup_activities') }}"
+                    class="nav-link {% if request.endpoint == 'startup_activities' %}active{% endif %}">Startup
+                    Activities</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('product_detail') }}" class="nav-link {% if request.endpoint == 'product_detail' %}active{% endif %}">Products & Expenses</a>
+                <a href="{{ url_for('product_detail') }}"
+                    class="nav-link {% if request.endpoint == 'product_detail' %}active{% endif %}">Products &
+                    Expenses</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('financial_forecast') }}" class="nav-link {% if request.endpoint == 'financial_forecast' %}active{% endif %}">Financial Forecast</a>
+                <a href="{{ url_for('financial_forecast') }}"
+                    class="nav-link {% if request.endpoint == 'financial_forecast' %}active{% endif %}">Financial
+                    Forecast</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('loan_calculator') }}" class="nav-link {% if request.endpoint == 'loan_calculator' %}active{% endif %}">Loan Calculator</a>
+                <a href="{{ url_for('loan_calculator') }}"
+                    class="nav-link {% if request.endpoint == 'loan_calculator' %}active{% endif %}">Loan Calculator</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('library') }}" class="nav-link {% if request.endpoint == 'library' %}active{% endif %}">Help & Resources</a>
+                <a href="{{ url_for('library') }}"
+                    class="nav-link {% if request.endpoint == 'library' %}active{% endif %}">Help & Resources</a>
             </li>
         </ul>
         <hr>
         {% if current_user.is_authenticated %}
         <div class="dropdown">
-            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="dropdownUser"
+                data-bs-toggle="dropdown" aria-expanded="false">
                 <strong>👤 {{ current_user.username }}</strong>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser">
                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Sign out</a></li>
             </ul>
         </div>
-        <hr>
         {% endif %}
-        <div class="sidebar-footer">
+        <div class="sidebar-footer mt-3">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="theme-switcher">
                 <label class="form-check-label" for="theme-switcher">Dark Mode</label>
@@ -77,8 +92,10 @@
         {% block content %}{% endblock %}
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+
     <script>
         // --- Theme Switcher Logic ---
         const themeSwitcher = document.getElementById('theme-switcher');
@@ -99,4 +116,5 @@
 
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

@@ -1,3 +1,6 @@
 {
-    "IDX.agenticWorkspace": true
+    "files.associations": {
+        ".flaskenv": "dotenv",
+        ".env*": "dotenv"
+    }
 }

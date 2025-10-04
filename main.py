@@ -5,19 +5,16 @@ from flask_migrate import Migrate
 from flask_login import UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db, login_manager
-from profitability import calculate_profitability
-from loan import calculate_loan_schedule
-from financial_ratios import calculate_dscr, calculate_key_ratios, calculate_advanced_ratios # Import the new functions
-from export import create_forecast_spreadsheet
-from database import get_assessment_messages
+import click
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Database Configuration ---
-# Use production database URL if available, otherwise use local SQLite
-prod_db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+# Use DATABASE_URL from environment variables if available, otherwise fallback to SQLite
+prod_db_url = os.environ.get('DATABASE_URL') or \
+              os.environ.get('POSTGRES_URL')
 if prod_db_url:
     # Replace postgres:// with postgresql:// for SQLAlchemy compatibility
     prod_db_url = prod_db_url.replace("postgres://", "postgresql://")
@@ -25,11 +22,28 @@ if prod_db_url:
     if 'sslmode' not in prod_db_url:
         prod_db_url += "?sslmode=require"
     app.config['SQLALCHEMY_DATABASE_URI'] = prod_db_url
+    # Add engine options for robust pooling with serverless DBs
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300
+    }
+    # For remote DBs (like Neon), set connect_timeout and search_path
+    if 'localhost' not in prod_db_url:
+        app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = {
+            "connect_timeout": 30,
+            "options": f"-c search_path={os.environ.get('POSTGRES_DATABASE', '$user,public')}"
+        }
 else:
     # Use absolute path for local SQLite DB to avoid ambiguity
     instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
     os.makedirs(instance_path, exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "bizstarter.db")}'
+
+from profitability import calculate_profitability
+from loan import calculate_loan_schedule
+from financial_ratios import calculate_dscr, calculate_key_ratios, calculate_advanced_ratios # Import the new functions
+from export import create_forecast_spreadsheet
+from database import get_assessment_messages
 
 from models import User, Product, Expense, FinancialParams, Asset, Liability, AssessmentMessage, BusinessStartupActivity
 
@@ -61,6 +75,17 @@ def seed_db_command():
     except Exception as e:
         print(f"Error seeding assessment messages: {e}")
         db.session.rollback()
+
+@app.cli.command("getenv")
+@click.argument("variable")
+def getenv_command(variable):
+    """Prints the value of an environment variable."""
+    value = os.environ.get(variable)
+    if value:
+        click.echo(f"{variable}={value}")
+    else:
+        click.echo(f"'{variable}' is not set.")
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -135,7 +160,8 @@ def startup_activities():
         db.session.commit()
 
         flash('Startup activities have been updated successfully!', 'success')
-        return redirect(url_for('startup_activities'))
+
+        return redirect(url_for('product_detail'))
 
     # For GET request, get activities for the current user
     activities = BusinessStartupActivity.query.filter_by(user_id=current_user.id).order_by(BusinessStartupActivity.id).all()
@@ -184,15 +210,18 @@ def save_product_details():
     # Add new products from the form
     for p in data.get('products', []):
         try:
+            price = float(p.get('price', 0) or 0)
+            sales_volume = int(p.get('sales_volume', 0) or 0)
             new_product = Product(
                 description=p.get('description'),
-                price=float(p.get('price', 0) or 0),
-                sales_volume=int(p.get('sales_volume', 0) or 0),
+                price=price,
+                sales_volume=sales_volume,
                 sales_volume_unit=p.get('sales_volume_unit', 'monthly'),
                 user_id=current_user.id
             )
             db.session.add(new_product)
         except (ValueError, TypeError):
+            # Skip rows with invalid number formats
             continue
 
     # Add new expenses from the form
@@ -533,15 +562,22 @@ def loan_calculator():
     net_operating_income = params.net_operating_income
 
     monthly_payment = None
-    schedule = None
-    # Load existing loan details from session to persist form data
-    form_data = session.get('loan_details', {})
     assessment = None
     dscr = 0.0
     dscr_status = ""
+    schedule = None
+
+    # Load existing loan details from session to persist form data and results
+    loan_details = session.get('loan_details', {})
+    form_data = {
+        'loan_amount': loan_details.get('loan_amount'),
+        'interest_rate': loan_details.get('interest_rate'),
+        'loan_term': loan_details.get('loan_term')
+    }
 
     if request.method == 'POST' and quarterly_net_profit is not None:
-        loan_amount = float(request.form.get('loan_amount', 0))
+        loan_amount_str = request.form.get('loan_amount', '0').replace(',', '')
+        loan_amount = float(loan_amount_str or 0)
         interest_rate = float(request.form.get('interest_rate', 0))
         loan_term = int(request.form.get('loan_term', 0))
         
@@ -581,6 +617,30 @@ def loan_calculator():
                  assessment = g.assessment_messages.get('high_risk')
             else:
                 assessment = g.assessment_messages.get('low_risk')
+    elif loan_details: # This is a GET request with existing data in session
+        monthly_payment = loan_details.get('monthly_payment')
+        schedule = loan_details.get('schedule')
+
+        if monthly_payment is not None and monthly_payment > 0 and net_operating_income is not None:
+            total_debt_service = monthly_payment * 12
+            dscr = calculate_dscr(net_operating_income, total_debt_service)
+
+            if dscr < 1.0:
+                dscr_status = g.assessment_messages.get('high_risk', {}).get('dscr_status', '')
+            elif dscr < 1.25:
+                dscr_status = g.assessment_messages.get('medium_risk', {}).get('dscr_status', '')
+            else:
+                dscr_status = g.assessment_messages.get('low_risk', {}).get('dscr_status', '')
+
+        if monthly_payment is not None and monthly_net_profit is not None:
+            if monthly_net_profit < monthly_payment * 1.5:
+                assessment = g.assessment_messages.get('medium_risk')
+            elif monthly_net_profit < monthly_payment:
+                 assessment = g.assessment_messages.get('high_risk')
+            else:
+                assessment = g.assessment_messages.get('low_risk')
+
+
 
     return render_template('loan-calculator.html', 
                            quarterly_net_profit=quarterly_net_profit,

@@ -1,112 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Loan Payment Calculator{% endblock %}
 {% block content %}
-    <h1 class="my-3 h3"><span class="icon">🏦</span> Loan Payment Calculator</h1>
+<h1 class="my-3 h3"><span class="icon">🏦</span> Loan Payment Calculator</h1>
 
-    <!-- Business Profitability -->
-    <div class="card mb-3">
-        <div class="card-header py-2">
-            <h2 class="h5 mb-0">Business Profitability Snapshot</h2>
-        </div>
-        <div class="card-body py-2">
-            {% if quarterly_net_profit is not none %}
-                <p class="mb-1 small">Your estimated annual net profit is: <strong>${{ "{:,.2f}".format(quarterly_net_profit * 4) }}</strong></p>
-                <p class="mb-0 small">This provides an estimated <strong>${{ "{:,.2f}".format(quarterly_net_profit / 3) }}</strong> of monthly net profit to work with.</p>
-            {% else %}
-                <div class="alert alert-warning alert-sm mb-0" role="alert">
-                    We don't have your forecast data. Please <a href="{{ url_for('product_detail') }}" class="alert-link">enter product details</a> first.
-                </div>
-            {% endif %}
-        </div>
+<!-- Business Profitability -->
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <h2 class="h5 mb-0">Business Profitability Snapshot</h2>
     </div>
-
-    <div class="row">
-        <!-- Loan Calculator Form -->
-        <div class="col-lg-5">
-            <div class="card mb-3">
-                <div class="card-header py-2">
-                    <h2 class="h5 mb-0">Calculate Your Loan</h2>
-                </div>
-                <div class="card-body py-2">
-                    <form method="POST">
-                        <div class="mb-2">
-                            <label for="loan_amount" class="form-label small">Loan Amount ($)</label>
-                            <input type="text" class="form-control form-control-sm" id="loan_amount" name="loan_amount" value="{{ '{:,.0f}'.format(form_data.loan_amount) if form_data.loan_amount else '25,000' }}" required>
-                        </div>
-                        <div class="mb-2">
-                            <label for="interest_rate" class="form-label small">Annual Interest Rate (%)</label>
-                            <input type="number" class="form-control form-control-sm" id="interest_rate" name="interest_rate" step="0.1" value="{{ form_data.interest_rate or '8.5' }}" required>
-                        </div>
-                        <div class="mb-2">
-                            <label for="loan_term" class="form-label small">Loan Term (Years)</label>
-                            <input type="number" class="form-control form-control-sm" id="loan_term" name="loan_term" value="{{ form_data.loan_term or '5' }}" required>
-                        </div>
-                        <div class="d-grid mt-3">
-                            <button type="submit" class="btn btn-primary btn-sm">Calculate Monthly Payment</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Results -->
-            {% if monthly_payment is not none and monthly_payment > 0 %}
-            <div class="card">
-                <div class="card-header py-2"><h2 class="h5 mb-0">Results</h2></div>
-                <div class="card-body text-center py-2">
-                    <div class="mb-2">
-                        <div class="stat-title small">Monthly Loan Payment</div>
-                        <div class="stat-value text-primary h5 mb-0">${{ "{:,.2f}".format(monthly_payment) }}</div>
-                    </div>
-                    {% if assessment %}
-                        <hr class="my-2">
-                        <div class="mt-2">
-                            <div class="stat-title small">Loan Affordability Assessment</div>
-                            <div class="stat-value h6 text-{{ assessment.status_class }}">{{ assessment.status }}</div>
-                            <p class="mt-1 small">{{ assessment.caption }}</p>
-                        </div>
-                    {% endif %}
-                    {% if dscr > 0 %}
-                    <hr class="my-2">
-                    <div class="mt-2">
-                        <div class="stat-title small">Debt Service Coverage Ratio (DSCR)</div>
-                        <div class="stat-value h6 text-primary">{{ "{:,.2f}".format(dscr) }}</div>
-                        <p class="mt-1 small">{{ dscr_status }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
+    <div class="card-body py-2">
+        {% if quarterly_net_profit is not none %}
+        <p class="mb-1 small">Your estimated annual net profit is: <strong>${{ "{:,.2f}".format(quarterly_net_profit *
+                4) }}</strong></p>
+        <p class="mb-0 small">This provides an estimated <strong>${{ "{:,.2f}".format(quarterly_net_profit / 3)
+                }}</strong> of monthly net profit to work with.</p>
+        {% else %}
+        <div class="alert alert-warning alert-sm mb-0" role="alert">
+            We don't have your forecast data. Please <a href="{{ url_for('product_detail') }}" class="alert-link">enter
+                product details</a> first.
         </div>
-
-        <!-- Loan Payment Chart -->
-        <div class="col-lg-7">
-            <div class="card">
-                <div class="card-header py-2">
-                    <h2 class="h5 mb-0">Loan Payment Schedule</h2>
-                </div>
-                <div class="card-body">
-                    {% if schedule %}
-                        <div id="chart-container" style="position: relative; height: 300px;">
-                            <canvas id="loanChart"></canvas>
-                        </div>
-                        <div id="chart-controls" class="mt-2 text-center" style="display: none;">
-                            <button id="back-to-yearly" class="btn btn-secondary btn-sm">Back to Yearly View</button>
-                        </div>
-                    {% else %}
-                        <div class="alert alert-info alert-sm mb-0">Your loan payment breakdown will be displayed here.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="my-4">
-        <a href="{{ url_for('financial_forecast') }}" class="btn btn-light">&larr; Back to Financial Forecast</a>
-        {% if monthly_payment %}
-        <a href="{{ url_for('export_forecast') }}" class="btn btn-success">
-            <span class="icon me-1">📄</span>Export Results
-        </a>
         {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <!-- Loan Calculator Form -->
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h2 class="h5 mb-0">Calculate Your Loan</h2>
+            </div>
+            <div class="card-body py-2">
+                <form method="POST">
+                    <div class="mb-2">
+                        <label for="loan_amount" class="form-label small">Loan Amount ($)</label>
+                        <input type="text" class="form-control form-control-sm" id="loan_amount" name="loan_amount"
+                            value="{{ '{:,.0f}'.format(form_data.loan_amount) if form_data.loan_amount is not none else '25,000' }}"
+                            required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="interest_rate" class="form-label small">Annual Interest Rate (%)</label>
+                        <input type="number" class="form-control form-control-sm" id="interest_rate"
+                            name="interest_rate" step="0.1" value="{{ form_data.interest_rate or '8.5' }}" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="loan_term" class="form-label small">Loan Term (Years)</label>
+                        <input type="number" class="form-control form-control-sm" id="loan_term" name="loan_term"
+                            value="{{ form_data.loan_term or '5' }}" required>
+                    </div>
+                    <div class="d-grid mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm">Calculate Monthly Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results -->
+        {% if monthly_payment is not none and monthly_payment > 0 %}
+        <div class="card">
+            <div class="card-header py-2">
+                <h2 class="h5 mb-0">Results</h2>
+            </div>
+            <div class="card-body text-center py-2">
+                <div class="mb-2">
+                    <div class="stat-title small">Monthly Loan Payment</div>
+                    <div class="stat-value text-primary h5 mb-0">${{ "{:,.2f}".format(monthly_payment) }}</div>
+                </div>
+                {% if assessment %}
+                <hr class="my-2">
+                <div class="mt-2">
+                    <div class="stat-title small">Loan Affordability Assessment</div>
+                    <div class="stat-value h6 text-{{ assessment.status_class }}">{{ assessment.status }}</div>
+                    <p class="mt-1 small">{{ assessment.caption }}</p>
+                </div>
+                {% endif %}
+                {% if dscr > 0 %}
+                <hr class="my-2">
+                <div class="mt-2">
+                    <div class="stat-title small">Debt Service Coverage Ratio (DSCR)</div>
+                    <div class="stat-value h6 text-primary">{{ "{:,.2f}".format(dscr) }}</div>
+                    <p class="mt-1 small">{{ dscr_status }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Loan Payment Chart -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header py-2">
+                <h2 class="h5 mb-0">Loan Payment Schedule</h2>
+            </div>
+            <div class="card-body">
+                {% if schedule %}
+                <div id="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="loanChart"></canvas>
+                </div>
+                <div id="chart-controls" class="mt-2 text-center" style="display: none;">
+                    <button id="back-to-yearly" class="btn btn-secondary btn-sm">Back to Yearly View</button>
+                </div>
+                {% else %}
+                <div class="alert alert-info alert-sm mb-0">Your loan payment breakdown will be displayed here.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="my-4">
+    <a href="{{ url_for('financial_forecast') }}" class="btn btn-light">&larr; Back to Financial Forecast</a>
+    {% if monthly_payment %}
+    <a href="{{ url_for('export_forecast') }}" class="btn btn-success">
+        <span class="icon me-1">📄</span>Export Results
+    </a>
+    {% endif %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
