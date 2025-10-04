@@ -1,7 +1,7 @@
 import json
 import os
-from extensions import db
-from models import AssessmentMessage
+from .extensions import db
+from .models import AssessmentMessage
 
 ASSESSMENT_MESSAGES_JSON_PATH = 'assessment_messages.json' # Path to the original JSON
 

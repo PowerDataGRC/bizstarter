@@ -16,7 +16,8 @@
                 }}</strong> of monthly net profit to work with.</p>
         {% else %}
         <div class="alert alert-warning alert-sm mb-0" role="alert">
-            We don't have your forecast data. Please <a href="{{ url_for('product_detail') }}" class="alert-link">enter
+            We don't have your forecast data. Please <a href="{{ url_for('main.product_detail') }}"
+                class="alert-link">enter
                 product details</a> first.
         </div>
         {% endif %}
@@ -110,9 +111,9 @@
 </div>
 
 <div class="my-4">
-    <a href="{{ url_for('financial_forecast') }}" class="btn btn-light">&larr; Back to Financial Forecast</a>
+    <a href="{{ url_for('main.financial_forecast') }}" class="btn btn-light">&larr; Back to Financial Forecast</a>
     {% if monthly_payment %}
-    <a href="{{ url_for('export_forecast') }}" class="btn btn-success">
+    <a href="{{ url_for('main.export_forecast') }}" class="btn btn-success">
         <span class="icon me-1">📄</span>Export Results
     </a>
     {% endif %}

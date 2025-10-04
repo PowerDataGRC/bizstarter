@@ -35,37 +35,38 @@
 <body class="d-flex">
     <div class="sidebar d-flex flex-column p-3">
         <a class="sidebar-brand d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none"
-            href="{{ url_for('index') }}">
+            href="{{ url_for('main.index') }}">
             <span class="fs-4">📈 BizStarter</span>
         </a>
         <hr>
         <ul class="nav nav-pills flex-column mb-auto">
             <li class="nav-item">
-                <a href="{{ url_for('intro') }}"
-                    class="nav-link {% if request.endpoint == 'intro' %}active{% endif %}">Intro</a>
+                <a href="{{ url_for('main.intro') }}"
+                    class="nav-link {% if request.endpoint == 'main.intro' %}active{% endif %}">Intro</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('startup_activities') }}"
-                    class="nav-link {% if request.endpoint == 'startup_activities' %}active{% endif %}">Startup
+                <a href="{{ url_for('main.startup_activities') }}"
+                    class="nav-link {% if request.endpoint == 'main.startup_activities' %}active{% endif %}">Startup
                     Activities</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('product_detail') }}"
-                    class="nav-link {% if request.endpoint == 'product_detail' %}active{% endif %}">Products &
+                <a href="{{ url_for('main.product_detail') }}"
+                    class="nav-link {% if request.endpoint == 'main.product_detail' %}active{% endif %}">Products &
                     Expenses</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('financial_forecast') }}"
-                    class="nav-link {% if request.endpoint == 'financial_forecast' %}active{% endif %}">Financial
+                <a href="{{ url_for('main.financial_forecast') }}"
+                    class="nav-link {% if request.endpoint == 'main.financial_forecast' %}active{% endif %}">Financial
                     Forecast</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('loan_calculator') }}"
-                    class="nav-link {% if request.endpoint == 'loan_calculator' %}active{% endif %}">Loan Calculator</a>
+                <a href="{{ url_for('main.loan_calculator') }}"
+                    class="nav-link {% if request.endpoint == 'main.loan_calculator' %}active{% endif %}">Loan
+                    Calculator</a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('library') }}"
-                    class="nav-link {% if request.endpoint == 'library' %}active{% endif %}">Help & Resources</a>
+                <a href="{{ url_for('main.library') }}"
+                    class="nav-link {% if request.endpoint == 'main.library' %}active{% endif %}">Help & Resources</a>
             </li>
         </ul>
         <hr>
@@ -76,7 +77,7 @@
                 <strong>👤 {{ current_user.username }}</strong>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser">
-                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Sign out</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Sign out</a></li>
             </ul>
         </div>
         {% endif %}

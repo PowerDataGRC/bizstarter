@@ -58,7 +58,6 @@ def upgrade():
     sa.Column('item', sa.String(length=200), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('frequency', sa.String(length=20), nullable=False),
-    sa.Column('readonly', sa.Boolean(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -83,6 +82,7 @@ def upgrade():
     sa.Column('loan_interest_rate', sa.Float(), nullable=True),
     sa.Column('loan_term', sa.Integer(), nullable=True),
     sa.Column('loan_monthly_payment', sa.Float(), nullable=True),
+    sa.Column('loan_schedule', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
