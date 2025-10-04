@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, session, jsonify, send_file, 
 from flask_migrate import Migrate
 from flask_login import UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.engine.url import make_url
 from extensions import db, login_manager
 import click
 
@@ -34,7 +35,6 @@ if prod_db_url:
 
         # Set search_path for providers like Neon.
         # It's better to parse the db name from the URL if possible.
-        from sqlalchemy.engine.url import make_url
         db_name = make_url(prod_db_url).database
         if db_name:
             app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args']['options'] = f'-c search_path={db_name}'
