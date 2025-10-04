@@ -57,29 +57,6 @@ login_manager.init_app(app)
 migrate = Migrate(app, db)
 login_manager.login_view = 'login'
 
-@app.cli.command("seed-db")
-def seed_db_command():
-    """Seeds the database with initial data (e.g., assessment messages)."""
-    if AssessmentMessage.query.first():
-        print("Assessment messages table is not empty. Skipping seed.")
-        return
-
-    print("Seeding assessment_messages table...")
-    try:
-        with open('assessment_messages.json', 'r') as f:
-            json_data = json.load(f)
-        
-        for risk_level, data in json_data.items():
-            message = AssessmentMessage(**data, risk_level=risk_level)
-            db.session.add(message)
-        db.session.commit()
-        print("Assessment messages seeded successfully.")
-    except FileNotFoundError:
-        print("Warning: assessment_messages.json not found. Skipping seed.")
-    except Exception as e:
-        print(f"Error seeding assessment messages: {e}")
-        db.session.rollback()
-
 @app.cli.command("getenv")
 @click.argument("variable")
 def getenv_command(variable):
@@ -95,6 +72,26 @@ def getenv_command(variable):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.before_first_request
+def initialize_database():
+    """
+    Run database migrations and seed initial data if necessary.
+    This runs once before the first request to this instance of the app.
+    """
+    # Seed assessment messages if the table is empty. This is safe to run on
+    # every application start because it checks for existing data first.
+    if not AssessmentMessage.query.first():
+        print("Seeding assessment_messages table...")
+        try:
+            with open('assessment_messages.json', 'r') as f:
+                messages_data = json.load(f)
+                for risk_level, data in messages_data.items():
+                    db.session.add(AssessmentMessage(risk_level=risk_level, **data))
+                db.session.commit()
+        except Exception as e:
+            app.logger.error(f"Error seeding assessment messages: {e}")
+            db.session.rollback()
+
 @app.before_request
 def load_assessment_messages():
     """Load assessment messages from DB into the request context if not already present."""
@@ -105,10 +102,8 @@ def load_assessment_messages():
 @app.route("/")
 def index():
     if current_user.is_authenticated:
-        # return redirect(url_for('intro'))
-        return "Hello, Authenticated World!"
-    # return redirect(url_for('login'))
-    return "Hello, World!"
+        return redirect(url_for('intro'))
+    return redirect(url_for('login'))
 
 @app.route("/intro")
 def intro():
