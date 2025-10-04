@@ -26,18 +26,18 @@ if prod_db_url:
     # Add engine options for robust pooling with serverless DBs
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "connect_args": {}  # Initialize connect_args
+        "pool_recycle": 300
     }
-    # For remote DBs (like Neon), set connect_timeout and search_path
+    # For remote DBs (like Neon), set connect_timeout and a reliable search_path
     if 'localhost' not in prod_db_url:
-        app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args']['connect_timeout'] = 30
-
-        # Set search_path for providers like Neon.
-        # It's better to parse the db name from the URL if possible.
-        db_name = make_url(prod_db_url).database
+        connect_args = {"connect_timeout": 30}
+        
+        # Use POSTGRES_DATABASE from Vercel/Neon env vars for a reliable search_path
+        db_name = os.environ.get('POSTGRES_DATABASE')
         if db_name:
-            app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args']['options'] = f'-c search_path={db_name}'
+            connect_args['options'] = f'-c search_path={db_name}'
+        
+        app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = connect_args
 
 else:
     # Use absolute path for local SQLite DB to avoid ambiguity
