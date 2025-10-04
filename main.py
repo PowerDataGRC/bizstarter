@@ -105,8 +105,10 @@ def load_assessment_messages():
 @app.route("/")
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for('intro'))
-    return redirect(url_for('login'))
+        # return redirect(url_for('intro'))
+        return "Hello, Authenticated World!"
+    # return redirect(url_for('login'))
+    return "Hello, World!"
 
 @app.route("/intro")
 def intro():
