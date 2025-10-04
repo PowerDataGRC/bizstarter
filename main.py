@@ -31,10 +31,15 @@ if prod_db_url:
     # For remote DBs (like Neon), set connect_timeout and a reliable search_path
     if 'localhost' not in prod_db_url:
         connect_args = {"connect_timeout": 30}
-        # Use POSTGRES_DATABASE from Vercel/Neon env vars for a reliable search_path
+        
+        # Attempt to get db_name from POSTGRES_DATABASE first, then parse from URL as a fallback.
         db_name = os.environ.get('POSTGRES_DATABASE')
+        if not db_name:
+            db_name = make_url(prod_db_url).database
+
         if db_name:
             connect_args['options'] = f'-c search_path={db_name}'
+
         app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = connect_args
 
 else:
