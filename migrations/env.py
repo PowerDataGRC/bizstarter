@@ -11,8 +11,9 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
-logger = logging.getLogger('alembic.env')
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+    logger = logging.getLogger('alembic.env')
 
 
 def get_engine():
@@ -36,8 +37,7 @@ def get_engine_url():
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_metadata = current_app.extensions['migrate'].db.metadata
+target_metadata = None
 
 
 def run_migrations_offline():
@@ -52,6 +52,8 @@ def run_migrations_offline():
     script output.
 
     """
+    # App context is not available in offline mode, so we must configure
+    # the URL manually.
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=target_metadata, literal_binds=True
@@ -68,6 +70,11 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
+    # This is the online migration configuration, which requires access to the
+    # Flask app context.
+    config.set_main_option('sqlalchemy.url', get_engine_url())
+    target_metadata = current_app.extensions['migrate'].db.metadata
+
 
     # this callback is used to prevent an auto-migration from being generated
     # when there are no changes to the schema
