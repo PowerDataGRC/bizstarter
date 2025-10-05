@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
 
+export PYTHONPATH="."
 export FLASK_APP=main:app
-python3 -m flask db upgrade
+flask db upgrade
