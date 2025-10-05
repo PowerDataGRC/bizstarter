@@ -1,3 +1,9 @@
 {
-  "installCommand": "./vercel-build.sh"
+  "installCommand": "./vercel-build.sh",
+  "builds": [
+    {
+      "src": "wsgi.py",
+      "use": "@vercel/python"
+    }
+  ]
 }
