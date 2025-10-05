@@ -2,4 +2,4 @@
 set -e
 
 export FLASK_APP=main:app
-flask db upgrade
+python3 -m flask db upgrade
