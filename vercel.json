@@ -1,9 +1,14 @@
 {
-  "installCommand": "./vercel-build.sh",
   "builds": [
     {
       "src": "wsgi.py",
       "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "wsgi.py"
     }
   ]
 }
