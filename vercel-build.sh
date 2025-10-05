@@ -5,6 +5,5 @@ set -ex
 echo "--- Running database migrations ---"
 export PYTHONPATH="."
 export FLASK_APP=main.py
-python -m flask db upgrade
-echo "--- Database migrations finished successfully ---"
+python3 -m flask db upgrade
 echo "--- Database migrations finished successfully ---"
