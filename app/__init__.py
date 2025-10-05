@@ -30,8 +30,10 @@ def create_app():
         }
     else:
         # Local development with SQLite
-        instance_path = os.path.join(os.path.dirname(app.root_path), 'instance')
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "bizstarter.db")}'
+        # Use /tmp for serverless environments like Vercel, or instance folder for local
+        db_path = os.path.join('/tmp', 'bizstarter.db') if 'VERCEL' in os.environ else \
+                  os.path.join(app.instance_path, 'bizstarter.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     # Initialize extensions
     db.init_app(app)
@@ -67,8 +69,7 @@ def seed_initial_data():
     if not AssessmentMessage.query.first():
         print("Seeding assessment_messages table...")
         try:
-            json_path = os.path.join(os.path.dirname(__file__), '..', 'assessment_messages.json')
-            with open(json_path, 'r') as f:
+            with current_app.open_resource('../assessment_messages.json') as f:
                 messages_data = json.load(f)
                 for risk_level, data in messages_data.items():
                     message = AssessmentMessage(
