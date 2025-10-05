@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, render_template, request, session, jsonify, send_file, redirect, url_for, flash, g
+from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, flash, g, current_app
 from flask_login import login_required, current_user
 
 from .extensions import db
@@ -8,16 +8,28 @@ from logic.profitability import calculate_profitability
 from logic.loan import calculate_loan_schedule
 from logic.financial_ratios import calculate_dscr, calculate_key_ratios, calculate_advanced_ratios
 from utils.export import create_forecast_spreadsheet
+from .auth import _seed_initial_user_data
 from .database import get_assessment_messages
 
 bp = Blueprint('main', __name__, url_prefix='/')
 
+# A simple in-memory cache for the assessment messages.
+# This will be populated on the first request.
+_assessment_messages_cache = None
+
 @bp.before_app_request
 def before_request():
     """Load assessment messages into the request context if not already present."""
-    if 'assessment_messages' not in g:
-        g.assessment_messages = get_assessment_messages()
+    global _assessment_messages_cache
+    if _assessment_messages_cache is None:
+        try:
+            current_app.logger.info("Populating assessment messages cache...")
+            _assessment_messages_cache = get_assessment_messages() or {}
+        except Exception as e:
+            current_app.logger.error(f"Failed to load assessment messages from DB: {e}")
+            _assessment_messages_cache = {}  # Use an empty dict on failure
 
+    g.assessment_messages = _assessment_messages_cache
 @bp.route("/")
 def index():
     if current_user.is_authenticated:
@@ -65,8 +77,32 @@ def startup_activities():
         return redirect(url_for('main.product_detail'))
 
     activities = BusinessStartupActivity.query.filter_by(user_id=current_user.id).order_by(BusinessStartupActivity.id).all()
+    
+    # Self-healing: If the user has an incomplete list of activities due to a past bug,
+    # delete the partial list and re-seed the full one.
+    try:
+        with current_app.open_resource('../startup_activities.json') as f:
+            default_activities_count = len(json.load(f))
+    except Exception:
+        default_activities_count = 10 # Fallback count
+
+    if len(activities) > 0 and len(activities) < default_activities_count:
+        current_app.logger.info(f"User {current_user.id} has an incomplete activity list. Re-seeding.")
+        BusinessStartupActivity.query.filter_by(user_id=current_user.id).delete()
+        activities = [] # Clear the list to trigger the seeding block below
+
     if not activities:
-        flash('No startup activities found. Add them below.', 'info')
+        try:
+            with current_app.open_resource('../startup_activities.json') as f:
+                initial_activities_data = json.load(f)
+            new_activities = [BusinessStartupActivity(**item, user_id=current_user.id) for item in initial_activities_data]
+            db.session.add_all(new_activities)
+            db.session.commit()
+            flash('We\'ve added a default list of startup activities to get you started.', 'info')
+            activities = new_activities  # Use the newly created activities
+        except Exception as e:
+            current_app.logger.error(f"Failed to seed startup activities for user {current_user.id}: {e}")
+            flash('Could not load default startup activities.', 'danger')
     total_weight = sum(act.weight for act in activities)
     return render_template('startup_activities.html', activities=activities, total_weight=total_weight)
 
@@ -74,17 +110,26 @@ def startup_activities():
 @login_required
 def product_detail():
     products_dict = [p.to_dict() for p in current_user.products]
-    user_expenses = current_user.expenses
-    if not user_expenses:
-        # If the user has no expenses, provide a default list.
-        expenses_dict = [
-            {'item': 'Rent/Lease', 'amount': 0, 'frequency': 'monthly'},
-            {'item': 'Salaries and Wages', 'amount': 0, 'frequency': 'monthly'},
-            {'item': 'Utilities (Electricity, Water, Internet)', 'amount': 0, 'frequency': 'monthly'},
-            {'item': 'Marketing and Advertising', 'amount': 0, 'frequency': 'monthly'},
-        ]
-    else:
-        expenses_dict = [e.to_dict() for e in user_expenses]
+    
+    # Self-healing: If the user has an incomplete or empty expense list, re-seed all their data.
+    # This is a robust way to fix data inconsistencies from past bugs.
+    # We check for a low number of expenses as a proxy for incomplete data.
+    if len(current_user.expenses) < 4:
+        current_app.logger.info(f"User {current_user.id} has an incomplete data set. Re-seeding.")
+        # Delete existing data to avoid duplicates
+        Product.query.filter_by(user_id=current_user.id).delete()
+        Expense.query.filter_by(user_id=current_user.id).delete()
+        Asset.query.filter_by(user_id=current_user.id).delete()
+        Liability.query.filter_by(user_id=current_user.id).delete()
+        BusinessStartupActivity.query.filter_by(user_id=current_user.id).delete()
+        FinancialParams.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        
+        # Re-seed everything
+        _seed_initial_user_data(current_user.id)
+        flash('Your account data has been refreshed with the latest defaults.', 'info')
+
+    expenses_dict = [e.to_dict() for e in current_user.expenses]
     company_name = current_user.financial_params.company_name if current_user.financial_params else ''
     return render_template('product-detail.html', products=products_dict, expenses=expenses_dict, company_name=company_name)
 
@@ -142,8 +187,13 @@ def financial_forecast():
         seasonality_factors=json.loads(financial_params.seasonality)
     )
 
-    # ... (ratio calculations and forecast updates) ...
-    # This logic is complex and can remain here for now.
+    # Persist key forecast results to the database so they can be used by the loan calculator
+    financial_params.total_annual_revenue = forecast['annual']['revenue']
+    financial_params.annual_net_profit = forecast['annual']['net_profit']
+    # The loan calculator uses the first quarter's net profit as a basis
+    financial_params.quarterly_net_profit = forecast['quarterly']['net_profit']
+    # Net Operating Income (EBIT) is Gross Profit - Operating Expenses
+    financial_params.net_operating_income = forecast['annual']['gross_profit'] - annual_op_ex
 
     financial_params.annual_operating_expenses = annual_op_ex
     db.session.commit()

@@ -560,6 +560,14 @@
     const depreciationInput = document.getElementById('depreciation');
     const seasonalityInputs = document.querySelectorAll('.seasonality-input');
 
+    // --- Seasonality Button State ---
+    const normalizeBtn = document.getElementById('normalize-seasonality');
+    const setNormalizeBtnActive = (isActive) => {
+        normalizeBtn.classList.toggle('btn-primary', isActive);
+        normalizeBtn.classList.toggle('btn-outline-secondary', !isActive);
+    };
+
+
     // --- Itemized List Management ---
     const updateTotals = () => {
         const totalAssets = Array.from(document.querySelectorAll('.asset-amount')).reduce((sum, input) => sum + parseFormattedNumber(input.value), 0);
@@ -635,7 +643,10 @@
     currentAssetsInput.addEventListener('input', recalculate);
     currentLiabilitiesInput.addEventListener('input', recalculate);
     depreciationInput.addEventListener('input', recalculate);
-    seasonalityInputs.forEach(input => input.addEventListener('input', recalculate));
+    seasonalityInputs.forEach(input => input.addEventListener('input', () => {
+        recalculate();
+        setNormalizeBtnActive(true); // Make button active on input change
+    }));
 
     const addRow = (tbodyId, descClass, amountClass) => {
         const tbody = document.getElementById(tbodyId);
@@ -677,7 +688,7 @@
     });
 
     // Seasonality normalization
-    document.getElementById('normalize-seasonality').addEventListener('click', () => {
+    normalizeBtn.addEventListener('click', () => {
         const inputs = Array.from(seasonalityInputs);
         const values = inputs.map(input => parseFloat(input.value) || 0);
         const total = values.reduce((sum, val) => sum + val, 0);
@@ -688,6 +699,7 @@
                 input.value = normalizedValues[index].toFixed(2);
             });
             recalculate(); // Trigger recalculation after normalizing
+            setNormalizeBtnActive(false); // Revert button to original state
         }
     });
 

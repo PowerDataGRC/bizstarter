@@ -38,8 +38,9 @@
                     {% for item in activities %}
                     <tr>
                         <td><input type="text" name="activity" class="form-control" value="{{ item.activity }}"
-                                required></td>
-                        <td><input type="text" name="description" class="form-control" value="{{ item.description }}">
+                                title="{{ item.activity }}" required></td>
+                        <td><input type="text" name="description" class="form-control" value="{{ item.description }}"
+                                title="{{ item.description }}">
                         </td>
                         <td><input type="number" name="weight" class="form-control weight-input"
                                 value="{{ item.weight }}" min="0" max="100" required></td>
@@ -79,8 +80,8 @@
         function createRow() {
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
-            <td><input type="text" name="activity" class="form-control" required></td>
-            <td><input type="text" name="description" class="form-control"></td>
+            <td><input type="text" name="activity" class="form-control" required title=""></td>
+            <td><input type="text" name="description" class="form-control" title=""></td>
             <td><input type="number" name="weight" class="form-control weight-input" min="0" max="100" required></td>
             <td>
                 <div class="d-flex align-items-center">
@@ -128,6 +129,12 @@
             });
             element.querySelectorAll('.progress-slider').forEach(slider => {
                 slider.addEventListener('input', () => slider.nextElementSibling.textContent = `${slider.value}%`);
+            });
+            // Add listener to update tooltips on text inputs
+            element.querySelectorAll('input[name="activity"], input[name="description"]').forEach(input => {
+                input.addEventListener('input', () => {
+                    input.title = input.value;
+                });
             });
         }
 

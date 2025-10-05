@@ -1,0 +1,62 @@
+[
+    {
+        "activity": "Conduct Market Research",
+        "description": "Analyze competitors, target audience, and market demand.",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Develop Business Plan",
+        "description": "Outline mission, vision, goals, strategies, and financial projections.",
+        "weight": 15,
+        "progress": 0
+    },
+    {
+        "activity": "Secure Funding",
+        "description": "Determine capital needs and secure loans, investments, or personal funds.",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Legal & Business Structure",
+        "description": "Register your business name, choose a legal structure (e.g., LLC, Corp).",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Build Your Brand",
+        "description": "Design logo, website, and marketing materials.",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Develop Product/Service",
+        "description": "Create and refine your core offering.",
+        "weight": 15,
+        "progress": 0
+    },
+    {
+        "activity": "Set Up Operations & Logistics",
+        "description": "Establish supply chain, location, and operational workflows.",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Develop Marketing & Sales Strategy",
+        "description": "Plan how you will reach and convert customers.",
+        "weight": 10,
+        "progress": 0
+    },
+    {
+        "activity": "Hire Key Staff",
+        "description": "Recruit and onboard essential team members.",
+        "weight": 5,
+        "progress": 0
+    },
+    {
+        "activity": "Prepare Operational & Privacy Policies",
+        "description": "SOPs, data/privacy, contracts, legal docs.",
+        "weight": 5,
+        "progress": 0
+    }
+]

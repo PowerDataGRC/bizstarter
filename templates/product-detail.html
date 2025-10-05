@@ -76,7 +76,7 @@
                         </select>
                     </div>
                     <div class="col-md-1 mb-2">
-                        <button type="button" class="btn btn-danger btn-sm remove-product-btn">X</button>
+                        <i class="bi bi-trash-fill text-danger remove-product-btn" style="cursor: pointer; font-size: 1.2rem;" title="Remove item"></i>
                     </div>
                 </div>
             `;
@@ -157,7 +157,7 @@
                     </div>
                     ${!isReadonly ? `
                     <div class="col-md-1 mb-2">
-                        <button type="button" class="btn btn-danger btn-sm remove-expense-btn">X</button>
+                        <i class="bi bi-trash-fill text-danger remove-expense-btn" style="cursor: pointer; font-size: 1.2rem;" title="Remove item"></i>
                     </div>
                     ` : '<div class="col-md-1 mb-2"></div>'}
                 </div>
@@ -251,8 +251,8 @@
         expenseEntriesGrid.scrollTop = expenseEntriesGrid.scrollHeight;
     });
 
-    // Universal event listener for focusout (blur) changes
-    document.addEventListener('focusout', (e) => {
+    // Unified event listener for 'input' and 'focusout' events for instant updates and formatting.
+    document.addEventListener('input', (e) => {
         if (e.target.closest('.product-entry')) {
             allProductsData = collectAllProductInputs();
             updateTotalSales();
@@ -263,10 +263,12 @@
         } else if (e.target.id === 'companyName') {
             saveDataToSession();
         }
-        // Re-format number inputs on focus out
-        if (e.type === 'focusout' && e.target.classList.contains('number-input')) {
-            const rawValue = e.target.value;
-            e.target.value = formatNumber(parseFormattedNumber(rawValue));
+    });
+
+    // Separate listener for 'focusout' to handle number formatting
+    document.addEventListener('focusout', (e) => {
+        if (e.target.classList.contains('number-input')) {
+            e.target.value = formatNumber(parseFormattedNumber(e.target.value));
         }
     });
 

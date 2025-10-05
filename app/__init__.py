@@ -1,17 +1,23 @@
 import os
 import json
-from flask import Flask
+import logging
+from flask import Flask, current_app
 from flask_migrate import Migrate
 import click
+from alembic.config import Config
+from alembic import command
 
 from .extensions import db, login_manager
+from .database import get_assessment_messages
 
 def create_app():
     """Create and configure an instance of the Flask application."""
+    # The root path of the app is the 'app' directory. The templates are one level up.
+    template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
     app = Flask(
         __name__,
         instance_relative_config=True,
-        template_folder='../templates'
+        template_folder=template_dir
     )
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,9 +41,31 @@ def create_app():
                   os.path.join(app.instance_path, 'bizstarter.db')
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
+    # --- Logging Configuration ---
+    if not app.debug and not app.testing:
+        # In production, log to stderr.
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        app.logger.addHandler(handler)
+
     # Initialize extensions
     db.init_app(app)
     Migrate(app, db)
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        """Remove the database session at the end of the request or app context."""
+        db.session.remove()
+
+    @app.after_request
+    def after_request_func(response):
+        """Ensure responses aren't cached, useful for development."""
+        if app.debug:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            response.headers['Cache-Control'] = 'public, max-age=0'
+        return response
 
     # Register custom template filter
     @app.template_filter('fromjson')
@@ -66,12 +94,15 @@ def create_app():
 def seed_initial_data():
     """Seeds the database with initial data."""
     from .models import AssessmentMessage
-    if not AssessmentMessage.query.first():
-        print("Seeding assessment_messages table...")
-        try:
-            with current_app.open_resource('../assessment_messages.json') as f:
-                messages_data = json.load(f)
-                for risk_level, data in messages_data.items():
+    print("Seeding assessment_messages table...")
+    try:
+        with current_app.open_resource('../assessment_messages.json') as f:
+            messages_data = json.load(f)
+            for risk_level, data in messages_data.items():
+                # Check if a message for this risk level already exists
+                existing_message = AssessmentMessage.query.filter_by(risk_level=risk_level).first()
+                if not existing_message:
+                    print(f"  - Adding message for '{risk_level}'...")
                     message = AssessmentMessage(
                         risk_level=risk_level,
                         status=data['status'],
@@ -80,15 +111,24 @@ def seed_initial_data():
                         dscr_status=data['dscr_status']
                     )
                     db.session.add(message)
-                db.session.commit()
-                print("Assessment messages seeded successfully.")
-        except Exception as e:
-            print(f"Error seeding assessment messages: {e}")
-            db.session.rollback()
+            db.session.commit()
+            print("Assessment messages seeding complete.")
+    except Exception as e:
+        print(f"Error seeding assessment messages: {e}")
+        db.session.rollback()
 
 @click.command('init-db')
 def init_db_command():
     """Clear the existing data and create new tables."""
-    db.create_all()
-    seed_initial_data()
-    click.echo('Initialized the database.')
+    with current_app.app_context():
+        click.echo("Applying database migrations...")
+        try:
+            migrations_dir = os.path.join(os.path.dirname(current_app.root_path), 'migrations')
+            alembic_cfg = Config(os.path.join(migrations_dir, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", migrations_dir)
+            alembic_cfg.set_main_option('sqlalchemy.url', current_app.config['SQLALCHEMY_DATABASE_URI'])
+            command.upgrade(alembic_cfg, 'head')
+            click.echo("Database migrations applied successfully.")
+            seed_initial_data()
+        except Exception as e:
+            click.echo(f"Error applying migrations: {e}", err=True)
