@@ -2,5 +2,5 @@
 set -e
 
 export PYTHONPATH="."
-export FLASK_APP=main:app
-flask db upgrade
+export FLASK_APP=main.py
+python3 -m flask db upgrade
