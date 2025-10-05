@@ -5,8 +5,6 @@ from flask_migrate import Migrate
 import click
 
 from .extensions import db, login_manager
-from .models import User, AssessmentMessage
-
 
 def create_app():
     """Create and configure an instance of the Flask application."""
@@ -40,9 +38,13 @@ def create_app():
     db.init_app(app)
     Migrate(app, db)
 
-    # Configure Flask-Login
-    from .auth_setup import setup_login_manager
-    setup_login_manager(app, lm=login_manager)
+    # --- Configure Flask-Login ---
+    login_manager.init_app(app)
+
+    from .models import User
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
 
     # Register custom template filter
     @app.template_filter('fromjson')
@@ -63,6 +65,7 @@ def create_app():
 
 def seed_initial_data():
     """Seeds the database with initial data."""
+    from .models import AssessmentMessage
     if not AssessmentMessage.query.first():
         print("Seeding assessment_messages table...")
         try:
