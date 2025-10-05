@@ -3,10 +3,10 @@
 set -ex
  
 echo "--- Installing dependencies ---"
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 
 echo "--- Running database migrations ---"
 export PYTHONPATH="."
 export FLASK_APP=main.py
-python -m flask db upgrade
+python3 -m flask db upgrade
 echo "--- Database migrations finished successfully ---"
