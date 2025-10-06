@@ -1,5 +1,10 @@
+.idea/
 .venv
 .vercel
 instance/
 *.sqlite
-.env
+*.env*
+new-feature.md
+.env.development.local
+.env.production.local
+__pycache__/
