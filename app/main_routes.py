@@ -6,7 +6,7 @@ from .extensions import db
 from .models import Product, Expense, FinancialParams, Asset, Liability, BusinessStartupActivity
 from logic.profitability import calculate_profitability
 from logic.loan import calculate_loan_schedule
-from logic.financial_ratios import calculate_dscr, calculate_key_ratios, calculate_advanced_ratios
+from logic.financial_ratios import calculate_dscr, calculate_key_ratios
 from utils.export import create_forecast_spreadsheet
 from .auth import _seed_initial_user_data
 from .database import get_assessment_messages
@@ -194,6 +194,27 @@ def financial_forecast():
     financial_params.quarterly_net_profit = forecast['quarterly']['net_profit']
     # Net Operating Income (EBIT) is Gross Profit - Operating Expenses
     financial_params.net_operating_income = forecast['annual']['gross_profit'] - annual_op_ex
+
+    # Calculate ratios for the initial page load
+    # This mirrors the logic in recalculate_forecast to ensure consistency
+    total_assets = sum(a.amount for a in current_user.assets)
+    total_debt = sum(l.amount for l in current_user.liabilities)
+
+    annual_ratios = calculate_key_ratios(
+        net_profit=forecast['annual']['net_profit'],
+        total_revenue=forecast['annual']['revenue'],
+        total_assets=total_assets,
+        current_assets=financial_params.current_assets,
+        current_liabilities=financial_params.current_liabilities,
+        total_debt=total_debt,
+        net_operating_income=financial_params.net_operating_income,
+        interest_expense=financial_params.interest_expense,
+        depreciation=financial_params.depreciation
+    )
+    forecast['annual'].update(annual_ratios)
+    # For simplicity, we'll pass the annual ratios for the quarterly view on initial load.
+    # The recalculate function will provide more accurate quarterly ratios.
+    forecast['quarterly'].update(annual_ratios)
 
     financial_params.annual_operating_expenses = annual_op_ex
     db.session.commit()

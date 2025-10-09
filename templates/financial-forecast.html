@@ -526,13 +526,13 @@
 
         const data = forecastData[view];
         document.getElementById('revenue-display').textContent = formatCurrency(data.revenue);
-        document.getElementById('net-profit-display').textContent = formatCurrency(data.net_profit);
-        document.getElementById('profit-margin-display').textContent = data.profit_margin.toFixed(2) + '%';
-        document.getElementById('roa-display').textContent = data.roa.toFixed(2) + '%'; // New: Update ROA display
-        document.getElementById('current-ratio-display').textContent = data.current_ratio.toFixed(2);
-        document.getElementById('de-ratio-display').textContent = data.debt_to_equity_ratio.toFixed(2);
-        document.getElementById('icr-display').textContent = data.interest_coverage_ratio.toFixed(2);
-        document.getElementById('ocf-ratio-display').textContent = data.operating_cash_flow_ratio.toFixed(2);
+        document.getElementById('net-profit-display').textContent = formatCurrency(data.net_profit || 0);
+        document.getElementById('profit-margin-display').textContent = (data.profit_margin || 0).toFixed(2) + '%';
+        document.getElementById('roa-display').textContent = (data.roa || 0).toFixed(2) + '%';
+        document.getElementById('current-ratio-display').textContent = (data.current_ratio || 0).toFixed(2);
+        document.getElementById('de-ratio-display').textContent = (data.debt_to_equity_ratio || 0).toFixed(2);
+        document.getElementById('icr-display').textContent = (data.interest_coverage_ratio || 0).toFixed(2);
+        document.getElementById('ocf-ratio-display').textContent = (data.operating_cash_flow_ratio || 0).toFixed(2);
     };
 
     // Event listeners for the view toggle
