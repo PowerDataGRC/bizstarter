@@ -159,5 +159,11 @@ class BusinessStartupActivity(db.Model):
         self.progress = progress
         self.user_id = user_id
 
+    def to_dict(self) -> Dict[str, Any]:
+        insp = inspect(self)
+        if insp is None:
+            return {} # pragma: no cover
+        return {c.key: getattr(self, c.key) for c in insp.mapper.column_attrs}
+
     def __repr__(self):
         return f'<Activity {self.activity}>'

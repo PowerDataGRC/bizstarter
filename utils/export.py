@@ -1,7 +1,7 @@
 from io import BytesIO
 from openpyxl import Workbook
-from openpyxl.chart import BarChart, LineChart, Reference
-from openpyxl.chart.series import Series
+from openpyxl.chart import BarChart, LineChart, Reference, Series
+from openpyxl.chart.series import SeriesLabel
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -82,13 +82,14 @@ def _add_revenue_sheet(wb, products, seasonality_factors, company_name):
 
     # --- Chart ---
     chart = BarChart()
-    chart.title = "Quarterly Revenue by Product"
+    chart.title = "Quarterly Revenue"
     chart.y_axis.title = "Revenue"
     chart.x_axis.title = "Quarter"
     chart.y_axis.number_format = CURRENCY_FORMAT
-    chart.grouping = "stacked"
+    chart.grouping = "clustered" # Changed from "stacked"
 
-    data = Reference(ws, min_col=2, min_row=2, max_col=ws.max_column - 1, max_row=ws.max_row)
+    # Include all revenue columns, including the total
+    data = Reference(ws, min_col=2, min_row=2, max_col=ws.max_column, max_row=ws.max_row)
     cats = Reference(ws, min_col=1, min_row=3, max_row=ws.max_row)
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(cats)
@@ -139,20 +140,22 @@ def _add_pnl_sheet(wb, product_monthly_revenues, operating_expenses, cogs_percen
         if cell.row > 2: cell.number_format = '0.00'
 
     # --- Chart ---
-    chart = LineChart()
+    chart = BarChart()
+    chart.style = 13
+    chart.grouping = "stacked"
     chart.title = "5-Year Financial Projections"
     chart.y_axis.title = "Amount (USD)"
     chart.x_axis.title = "Year"
     chart.y_axis.number_format = CURRENCY_FORMAT
 
-    chart.set_categories(Reference(ws, min_col=1, min_row=3, max_row=ws.max_row))
-    
-    # Add data series correctly
-    data_cols = [(2, 'Total Revenue'), (4, 'Gross Profit'), (10, 'Net Income')]
-    for col, title in data_cols:
-        data_ref = Reference(ws, min_col=col, min_row=3, max_row=ws.max_row)
-        series = Series(data_ref, title=ws.cell(row=2, column=col).value or title)
-        chart.series.append(series)
+    cats = Reference(ws, min_col=1, min_row=3, max_row=ws.max_row)
+    chart.set_categories(cats)
+
+    # Add data series for 'Total Revenue', 'Gross Profit', and 'Net Income'
+    data_cols = [2, 4, 10] 
+    for col in data_cols:
+        data = Reference(ws, min_col=col, min_row=2, max_row=ws.max_row)
+        chart.add_data(data, titles_from_data=True)
 
     ws.add_chart(chart, "A10")
 

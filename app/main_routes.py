@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, flash, g, current_app
 from typing import Any, Dict
-from sqlalchemy import update
+from sqlalchemy import update, delete
 from flask_login import login_required, current_user
 
 from .extensions import db
@@ -27,6 +27,7 @@ def before_request():
             _assessment_messages_cache = get_assessment_messages() or {}
         except Exception as e:
             current_app.logger.error(f"Failed to load assessment messages from DB: {e}")
+            db.session.rollback() # Rollback the session to prevent further errors
             _assessment_messages_cache = {}  # Use an empty dict on failure
 
     g.assessment_messages = _assessment_messages_cache
@@ -183,6 +184,9 @@ def recalculate_forecast():
     
     db.session.commit()
 
+    # Refresh the user object to ensure it has the updated assets and liabilities
+    db.session.refresh(current_user)
+
     forecast = services.get_or_recalculate_forecast(current_user, data)
     return jsonify(forecast)
 
@@ -194,12 +198,18 @@ def loan_calculator():
     if not params:
         return redirect(url_for('main.financial_forecast'))
 
+    # Recalculate forecast to ensure all data is fresh
+    forecast = services.get_or_recalculate_forecast(current_user)
+
     quarterly_net_profit = params.quarterly_net_profit or 0
     annual_net_profit = params.annual_net_profit or 0
     # Use the true monthly net profit if available, otherwise estimate from annual
     monthly_net_profit = annual_net_profit / 12 if annual_net_profit else (quarterly_net_profit / 3)
 
-    net_operating_income = 0
+    net_operating_income = params.net_operating_income or 0
+    interest_expense = params.interest_expense or 0
+    icr = net_operating_income / interest_expense if interest_expense > 0 else 0
+    
     assessment, dscr, dscr_status, schedule, monthly_payment = None, 0.0, "", None, None
     form_data = {
         'loan_amount': params.loan_amount,
@@ -225,9 +235,6 @@ def loan_calculator():
         params.loan_schedule = json.dumps(schedule)
         db.session.commit()
         return redirect(url_for('main.loan_calculator'))
-    # Recalculate forecast to ensure all data is fresh for DSCR calculation
-    forecast = services.get_or_recalculate_forecast(current_user)
-    net_operating_income = params.net_operating_income or 0
 
     # On a GET request, load the saved loan data from the database
     if request.method == 'GET' and params.loan_monthly_payment:
@@ -259,7 +266,8 @@ def loan_calculator():
                            assessment=assessment,
                            dscr=dscr,
                            dscr_status=dscr_status,
-                           schedule=schedule)
+                           schedule=schedule,
+                           icr=icr)
 
 @bp.route("/export-forecast")
 @login_required

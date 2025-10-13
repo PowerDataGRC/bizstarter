@@ -76,12 +76,16 @@ def calculate_profitability(products, cogs_percentage=35.0, annual_operating_exp
         quarterly_forecasts = monthly_forecasts[start_index:end_index]
         quarterly_summaries.append(aggregate_forecast(quarterly_forecasts))
 
-    # For simplicity, we'll return the first quarter's summary for the "quarterly" key
-    # to maintain compatibility with the loan calculator page.
-    quarterly_summary = quarterly_summaries[0] if quarterly_summaries else aggregate_forecast([])
+    # Calculate the average of the quarterly summaries
+    average_quarterly_summary = {
+        "revenue": sum(q['revenue'] for q in quarterly_summaries) / 4,
+        "net_profit": sum(q['net_profit'] for q in quarterly_summaries) / 4,
+        "tax": sum(q['tax'] for q in quarterly_summaries) / 4,
+        "gross_profit": sum(q['gross_profit'] for q in quarterly_summaries) / 4,
+    } if quarterly_summaries else aggregate_forecast([])
 
     return {
         "monthly": monthly_forecasts,
-        "quarterly": quarterly_summary,
+        "quarterly": average_quarterly_summary,
         "annual": annual_summary
     }

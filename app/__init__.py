@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from flask import Flask, current_app
 from flask_migrate import Migrate
 import click
@@ -13,7 +13,8 @@ from .database import get_assessment_messages
 
 
 def create_app():
-    load_dotenv()
+    load_dotenv(find_dotenv(".env"))
+    load_dotenv(find_dotenv(".env.development.local"))
     
     """Create and configure an instance of the Flask application."""
     # The root path of the app is the 'app' directory. The templates are one level up.
@@ -28,25 +29,36 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # --- Database Configuration ---
-    prod_db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
-    local_db_url = os.environ.get('LOCAL_DATABASE_URL')
-    if prod_db_url:
-        prod_db_url = prod_db_url.replace("postgres://", "postgresql://")
-        if 'sslmode' not in prod_db_url:
-            prod_db_url += "?sslmode=require"
-        app.config['SQLALCHEMY_DATABASE_URI'] = prod_db_url
+    load_dotenv() # ensure env vars are loaded
+    
+    is_development = os.environ.get('FLASK_DEBUG') == '1'
+    
+    db_url = None
+
+    if is_development:
+        db_url = os.environ.get('LOCAL_DATABASE_URL')
+
+    if not db_url:
+        db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+
+    if db_url:
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://")
+        if 'sslmode' not in db_url and not is_development:
+            db_url += "?sslmode=require"
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             "pool_pre_ping": True,
-            "pool_recycle": 300,
-            "connect_args": {"connect_timeout": 30}
+            "pool_recycle": 280,
+            "pool_size": 5,
+            "max_overflow": 10,
+            "connect_args": {
+                "connect_timeout": 30
+            }
         }
-    elif local_db_url:
-        app.config['SQLALCHEMY_DATABASE_URI'] = local_db_url
     else:
         # Local development with SQLite
-        # Use /tmp for serverless environments like Vercel, or instance folder for local
-        db_path = os.path.join('/tmp', 'bizstarter.db') if 'VERCEL' in os.environ else \
-                  os.path.join(app.instance_path, 'bizstarter.db')
+        db_path = os.path.join(app.instance_path, 'bizstarter.db')
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     # --- Logging Configuration ---
