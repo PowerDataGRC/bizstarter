@@ -1,14 +1,14 @@
 import json
 from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, flash, g, current_app
+from typing import Any, Dict
+from sqlalchemy import update
 from flask_login import login_required, current_user
 
 from .extensions import db
-from .models import Product, Expense, FinancialParams, Asset, Liability, BusinessStartupActivity
-from logic.profitability import calculate_profitability
+from .models import FinancialParams, Asset, Liability, BusinessStartupActivity
 from logic.loan import calculate_loan_schedule
-from logic.financial_ratios import calculate_dscr, calculate_key_ratios
+from logic.financial_ratios import calculate_dscr
 from utils.export import create_forecast_spreadsheet
-from .auth import _seed_initial_user_data
 from .database import get_assessment_messages
 
 bp = Blueprint('main', __name__, url_prefix='/')
@@ -50,28 +50,41 @@ def library():
 @login_required
 def startup_activities():
     if request.method == 'POST':
-        BusinessStartupActivity.query.filter_by(user_id=current_user.id).delete()
-        activities, descriptions, weights, progresses = (
-            request.form.getlist('activity'), request.form.getlist('description'),
-            request.form.getlist('weight'), request.form.getlist('progress')
-        )
-        total_weight, new_activities = 0, []
-        for i in range(len(activities)):
-            if activities[i].strip() and weights[i].strip():
-                try:
-                    weight, progress = int(weights[i]), int(progresses[i])
-                    total_weight += weight
-                    new_activities.append(BusinessStartupActivity(
-                        activity=activities[i].strip(), description=descriptions[i].strip(),
-                        weight=weight, progress=progress, user_id=current_user.id
-                    ))
-                except ValueError:
-                    flash('Invalid weight/progress value.', 'danger')
-                    return render_template('startup_activities.html', activities=zip(activities, descriptions, weights, progresses), total_weight="Error"), 400
+        form_ids = request.form.getlist('id')
+        form_activities = request.form.getlist('activity')
+        form_descriptions = request.form.getlist('description')
+        form_weights = request.form.getlist('weight')
+        form_progresses = request.form.getlist('progress')
+
+        total_weight = sum(int(w) for w in form_weights if w.isdigit())
         if total_weight > 100:
             flash(f'Total weight cannot exceed 100%. Current: {total_weight}%.', 'danger')
-            return render_template('startup_activities.html', activities=zip(activities, descriptions, weights, progresses), total_weight=total_weight), 400
-        db.session.add_all(new_activities)
+            # Re-render with submitted data to avoid losing user input
+            activities_for_template = []
+            for i in range(len(form_activities)):
+                activities_for_template.append({
+                    'id': form_ids[i], 'activity': form_activities[i], 'description': form_descriptions[i],
+                    'weight': form_weights[i], 'progress': form_progresses[i]
+                })
+            return render_template('startup_activities.html', activities=activities_for_template, total_weight=total_weight), 400
+
+        existing_activities = {str(act.id): act for act in BusinessStartupActivity.query.filter_by(user_id=current_user.id).all()}
+        submitted_ids = set()
+
+        for i in range(len(form_activities)):
+            activity_id = form_ids[i]
+            activity_data = {
+                'activity': form_activities[i].strip(), 'description': form_descriptions[i].strip(),
+                'weight': int(form_weights[i]), 'progress': int(form_progresses[i]), 'user_id': current_user.id
+            }
+            if activity_id in existing_activities:
+                # Use the sqlalchemy.update() construct for better type compatibility
+                stmt = update(BusinessStartupActivity).where(BusinessStartupActivity.id == activity_id).values(**activity_data)
+                db.session.execute(stmt)
+                submitted_ids.add(activity_id)
+            elif activity_data['activity']: # It's a new row
+                db.session.add(BusinessStartupActivity(**activity_data))
+
         db.session.commit()
         flash('Startup activities updated!', 'success')
         return redirect(url_for('main.product_detail'))
@@ -109,115 +122,40 @@ def startup_activities():
 @bp.route("/product-detail", methods=["GET"])
 @login_required
 def product_detail():
-    products_dict = [p.to_dict() for p in current_user.products]
-    
-    # Self-healing: If the user has an incomplete or empty expense list, re-seed all their data.
-    # This is a robust way to fix data inconsistencies from past bugs.
-    # We check for a low number of expenses as a proxy for incomplete data.
-    if len(current_user.expenses) < 4:
-        current_app.logger.info(f"User {current_user.id} has an incomplete data set. Re-seeding.")
-        # Delete existing data to avoid duplicates
-        Product.query.filter_by(user_id=current_user.id).delete()
-        Expense.query.filter_by(user_id=current_user.id).delete()
-        Asset.query.filter_by(user_id=current_user.id).delete()
-        Liability.query.filter_by(user_id=current_user.id).delete()
-        BusinessStartupActivity.query.filter_by(user_id=current_user.id).delete()
-        FinancialParams.query.filter_by(user_id=current_user.id).delete()
-        db.session.commit()
-        
-        # Re-seed everything
-        _seed_initial_user_data(current_user.id)
-        flash('Your account data has been refreshed with the latest defaults.', 'info')
-
-    expenses_dict = [e.to_dict() for e in current_user.expenses]
-    company_name = current_user.financial_params.company_name if current_user.financial_params else ''
-    return render_template('product-detail.html', products=products_dict, expenses=expenses_dict, company_name=company_name)
+    from . import services
+    products, expenses, company_name = services.get_product_and_expense_data(current_user.id)
+    page_data = {
+        "products": products,
+        "expenses": expenses,
+        "company_name": company_name,
+        "save_url": url_for('main.save_product_details'),
+        "continue_url": url_for('main.financial_forecast')
+    }
+    return render_template('product-detail.html', page_data=page_data)
 
 @bp.route("/save-product-details", methods=["POST"])
 @login_required
 def save_product_details():
+    from . import services
     data = request.get_json()
-    Product.query.filter_by(user_id=current_user.id).delete()
-    Expense.query.filter_by(user_id=current_user.id).delete()
-    for p in data.get('products', []):
-        try:
-            db.session.add(Product(
-                description=p.get('description'), price=float(p.get('price', 0) or 0),
-                sales_volume=int(p.get('sales_volume', 0) or 0),
-                sales_volume_unit=p.get('sales_volume_unit', 'monthly'), user_id=current_user.id
-            ))
-        except (ValueError, TypeError): continue
-    for e in data.get('expenses', []):
-        try:
-            db.session.add(Expense(
-                item=e.get('item'), amount=float(e.get('amount', 0) or 0),
-                frequency=e.get('frequency', 'monthly'),
-                user_id=current_user.id
-            ))
-        except (ValueError, TypeError): continue
-    financial_params = current_user.financial_params or FinancialParams(user_id=current_user.id)
-    financial_params.company_name = data.get('company_name', '')
-    db.session.add(financial_params)
-    db.session.commit()
+    services.save_product_and_expense_data(current_user.id, data)
     return jsonify({'status': 'success'})
 
 @bp.route("/financial-forecast", methods=["GET"])
 @login_required
 def financial_forecast():
+    from . import services
     financial_params = current_user.financial_params
     if not financial_params:
         flash('Financial parameters not found. Please visit Product Detail page first.', 'warning')
         return redirect(url_for('main.product_detail'))
 
-    products = [p.to_dict() for p in current_user.products]
-    operating_expenses = [e.to_dict() for e in current_user.expenses]
     assets = [a.to_dict() for a in current_user.assets]
     liabilities = [l.to_dict() for l in current_user.liabilities]
-    total_assets = sum(item.amount for item in current_user.assets)
-    total_debt = sum(item.amount for item in current_user.liabilities)
-    
-    annual_op_ex = sum(
-        (float(e.get('amount', 0)) * 12 if e.get('frequency') == 'monthly' else float(e.get('amount', 0)) * 4)
-        for e in operating_expenses
-    )
+    operating_expenses = [e.to_dict() for e in current_user.expenses]
+    financial_params.annual_operating_expenses = sum((e['amount'] * 12 if e['frequency'] == 'monthly' else e['amount'] * 4) for e in operating_expenses)
 
-    forecast = calculate_profitability(
-        products=products, cogs_percentage=financial_params.cogs_percentage,
-        annual_operating_expenses=annual_op_ex, tax_rate=financial_params.tax_rate,
-        seasonality_factors=json.loads(financial_params.seasonality)
-    )
-
-    # Persist key forecast results to the database so they can be used by the loan calculator
-    financial_params.total_annual_revenue = forecast['annual']['revenue']
-    financial_params.annual_net_profit = forecast['annual']['net_profit']
-    # The loan calculator uses the first quarter's net profit as a basis
-    financial_params.quarterly_net_profit = forecast['quarterly']['net_profit']
-    # Net Operating Income (EBIT) is Gross Profit - Operating Expenses
-    financial_params.net_operating_income = forecast['annual']['gross_profit'] - annual_op_ex
-
-    # Calculate ratios for the initial page load
-    # This mirrors the logic in recalculate_forecast to ensure consistency
-    total_assets = sum(a.amount for a in current_user.assets)
-    total_debt = sum(l.amount for l in current_user.liabilities)
-
-    annual_ratios = calculate_key_ratios(
-        net_profit=forecast['annual']['net_profit'],
-        total_revenue=forecast['annual']['revenue'],
-        total_assets=total_assets,
-        current_assets=financial_params.current_assets,
-        current_liabilities=financial_params.current_liabilities,
-        total_debt=total_debt,
-        net_operating_income=financial_params.net_operating_income,
-        interest_expense=financial_params.interest_expense,
-        depreciation=financial_params.depreciation
-    )
-    forecast['annual'].update(annual_ratios)
-    # For simplicity, we'll pass the annual ratios for the quarterly view on initial load.
-    # The recalculate function will provide more accurate quarterly ratios.
-    forecast['quarterly'].update(annual_ratios)
-
-    financial_params.annual_operating_expenses = annual_op_ex
-    db.session.commit()
+    forecast = services.get_or_recalculate_forecast(current_user)
 
     return render_template(
         'financial-forecast.html',
@@ -230,55 +168,38 @@ def financial_forecast():
 @bp.route("/recalculate-forecast", methods=["POST"])
 @login_required
 def recalculate_forecast():
+    from . import services
     data = request.get_json()
-    params = current_user.financial_params
-    params.cogs_percentage = float(data.get('cogs_percentage'))
-    params.tax_rate = float(data.get('tax_rate'))
-    params.seasonality = json.dumps([float(v) for v in data.get('seasonality', [1.0] * 12)])
-    params.current_assets = float(data.get('current_assets'))
-    params.current_liabilities = float(data.get('current_liabilities'))
-    params.interest_expense = float(data.get('interest_expense'))
-    params.depreciation = float(data.get('depreciation'))
-    
-    Asset.query.filter_by(user_id=current_user.id).delete()
+
+    db.session.execute(delete(Asset).where(Asset.user_id == current_user.id))
     for item in data.get('assets', []):
         if item.get('description'):
             db.session.add(Asset(description=item['description'], amount=float(item.get('amount', 0) or 0), user_id=current_user.id))
 
-    Liability.query.filter_by(user_id=current_user.id).delete()
+    db.session.execute(delete(Liability).where(Liability.user_id == current_user.id))
     for item in data.get('liabilities', []):
         if item.get('description'):
             db.session.add(Liability(description=item['description'], amount=float(item.get('amount', 0) or 0), user_id=current_user.id))
-
-    db.session.commit()
-
-    # Re-fetch and recalculate
-    products = [p.to_dict() for p in current_user.products]
-    annual_op_ex = float(data.get('annual_operating_expenses'))
-    params.annual_operating_expenses = annual_op_ex
-    db.session.commit()
-
-    forecast = calculate_profitability(
-        products=products, cogs_percentage=params.cogs_percentage,
-        annual_operating_expenses=annual_op_ex, tax_rate=params.tax_rate,
-        seasonality_factors=json.loads(params.seasonality)
-    )
     
-    # ... (ratio calculations and forecast updates) ...
+    db.session.commit()
 
+    forecast = services.get_or_recalculate_forecast(current_user, data)
     return jsonify(forecast)
 
 @bp.route("/loan-calculator", methods=['GET', 'POST'])
 @login_required
 def loan_calculator():
+    from . import services
     params = current_user.financial_params
     if not params:
         return redirect(url_for('main.financial_forecast'))
 
     quarterly_net_profit = params.quarterly_net_profit or 0
-    monthly_net_profit = quarterly_net_profit / 3
-    net_operating_income = params.net_operating_income or 0
+    annual_net_profit = params.annual_net_profit or 0
+    # Use the true monthly net profit if available, otherwise estimate from annual
+    monthly_net_profit = annual_net_profit / 12 if annual_net_profit else (quarterly_net_profit / 3)
 
+    net_operating_income = 0
     assessment, dscr, dscr_status, schedule, monthly_payment = None, 0.0, "", None, None
     form_data = {
         'loan_amount': params.loan_amount,
@@ -303,28 +224,36 @@ def loan_calculator():
         params.loan_monthly_payment = monthly_payment
         params.loan_schedule = json.dumps(schedule)
         db.session.commit()
+        return redirect(url_for('main.loan_calculator'))
+    # Recalculate forecast to ensure all data is fresh for DSCR calculation
+    forecast = services.get_or_recalculate_forecast(current_user)
+    net_operating_income = params.net_operating_income or 0
 
-    # This block runs for both POST and GET with session data
-    if params.loan_monthly_payment:
+    # On a GET request, load the saved loan data from the database
+    if request.method == 'GET' and params.loan_monthly_payment:
         monthly_payment = params.loan_monthly_payment
         if params.loan_schedule:
-            schedule = json.loads(params.loan_schedule)
-        if monthly_payment and monthly_payment > 0:
-            total_debt_service = monthly_payment * 12
-            dscr = calculate_dscr(net_operating_income, total_debt_service)
+            schedule = params.loan_schedule  # Pass the raw JSON string to the template
 
-            if dscr < 1.0:
-                assessment = g.assessment_messages.get('high_risk')
-            elif dscr < 1.25:
-                assessment = g.assessment_messages.get('medium_risk')
-            else:
-                assessment = g.assessment_messages.get('low_risk')
+    # This block runs for both POST and for GET requests that have loaded data
+    if monthly_payment and monthly_payment > 0:
+        total_debt_service = monthly_payment * 12
+        dscr = calculate_dscr(net_operating_income, total_debt_service)
 
-            if assessment:
-                dscr_status = assessment.get('dscr_status', '')
+        if dscr < 1.0:
+            assessment = g.assessment_messages.get('high_risk')
+        elif dscr < 1.25:
+            assessment = g.assessment_messages.get('medium_risk')
+        else:
+            assessment = g.assessment_messages.get('low_risk')
+
+        if assessment:
+            dscr_status = assessment.get('dscr_status', '')
 
     return render_template('loan-calculator.html', 
                            quarterly_net_profit=quarterly_net_profit,
+                           annual_net_profit=annual_net_profit,
+                           monthly_net_profit=monthly_net_profit,
                            monthly_payment=monthly_payment,
                            form_data=form_data,
                            assessment=assessment,
@@ -338,6 +267,7 @@ def export_forecast():
     params = current_user.financial_params
     products = [p.to_dict() for p in current_user.products]
     operating_expenses = [e.to_dict() for e in current_user.expenses]
+    startup_activities = [a.to_dict() for a in current_user.startup_activities]
     loan_details = {
         'loan_amount': params.loan_amount,
         'interest_rate': params.loan_interest_rate,
@@ -349,7 +279,7 @@ def export_forecast():
     spreadsheet_file = create_forecast_spreadsheet(
         products, operating_expenses, params.cogs_percentage, loan_details,
         json.loads(params.seasonality), params.company_name,
-        params.depreciation, params.interest_expense
+        params.depreciation, params.interest_expense, startup_activities
     )
 
     return send_file(

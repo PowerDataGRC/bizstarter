@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+from dotenv import load_dotenv
 from flask import Flask, current_app
 from flask_migrate import Migrate
 import click
@@ -10,20 +11,25 @@ from alembic import command
 from .extensions import db, login_manager
 from .database import get_assessment_messages
 
+
 def create_app():
+    load_dotenv()
+    
     """Create and configure an instance of the Flask application."""
     # The root path of the app is the 'app' directory. The templates are one level up.
     template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
     app = Flask(
         __name__,
         instance_relative_config=True,
-        template_folder=template_dir
+        template_folder=template_dir,
+        static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static'))
     )
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # --- Database Configuration ---
     prod_db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+    local_db_url = os.environ.get('LOCAL_DATABASE_URL')
     if prod_db_url:
         prod_db_url = prod_db_url.replace("postgres://", "postgresql://")
         if 'sslmode' not in prod_db_url:
@@ -34,6 +40,8 @@ def create_app():
             "pool_recycle": 300,
             "connect_args": {"connect_timeout": 30}
         }
+    elif local_db_url:
+        app.config['SQLALCHEMY_DATABASE_URI'] = local_db_url
     else:
         # Local development with SQLite
         # Use /tmp for serverless environments like Vercel, or instance folder for local

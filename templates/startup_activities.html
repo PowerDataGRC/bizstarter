@@ -37,12 +37,15 @@
                 <tbody>
                     {% for item in activities %}
                     <tr>
-                        <td><input type="text" name="activity" class="form-control" value="{{ item.activity }}"
-                                title="{{ item.activity }}" required></td>
+                        <td>
+                            <input type="hidden" name="id" value="{{ item.id or '' }}">
+                            <input type="text" name="activity" class="form-control" value="{{ item.activity }}"
+                                title="{{ item.activity }}" required>
+                        </td>
                         <td><input type="text" name="description" class="form-control" value="{{ item.description }}"
                                 title="{{ item.description }}">
                         </td>
-                        <td><input type="number" name="weight" class="form-control weight-input"
+                        <td><input type="number" name="weight" class="form-control weight-input" value="0"
                                 value="{{ item.weight }}" min="0" max="100" required></td>
                         <td>
                             <div class="d-flex align-items-center">
@@ -71,75 +74,8 @@
     </form>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const tableBody = document.querySelector('#activities-table tbody');
-        const addRowBtn = document.getElementById('add-row-btn');
-        const totalWeightBadge = document.getElementById('total-weight-badge');
+{% endblock %}
 
-        function createRow() {
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-            <td><input type="text" name="activity" class="form-control" required title=""></td>
-            <td><input type="text" name="description" class="form-control" title=""></td>
-            <td><input type="number" name="weight" class="form-control weight-input" min="0" max="100" required></td>
-            <td>
-                <div class="d-flex align-items-center">
-                    <input type="range" name="progress" class="form-range progress-slider" min="0" max="100" step="1" value="0">
-                    <span class="ms-2 progress-value fw-bold">0%</span>
-                </div>
-            </td>
-            <td class="text-center">
-                <i class="bi bi-trash-fill text-danger remove-row-btn" style="cursor: pointer; font-size: 1.2rem;" title="Remove item"></i>
-            </td>
-        `;
-            tableBody.appendChild(newRow);
-            attachEventListeners(newRow);
-        }
-
-        function removeRow(button) {
-            button.closest('tr').remove();
-            updateTotalWeight();
-        }
-
-        function updateTotalWeight() {
-            let total = 0;
-            document.querySelectorAll('.weight-input').forEach(input => {
-                const value = parseInt(input.value, 10);
-                if (!isNaN(value)) {
-                    total += value;
-                }
-            });
-            totalWeightBadge.textContent = `Total Weight: ${total}%`;
-            if (total > 100) {
-                totalWeightBadge.classList.remove('bg-primary');
-                totalWeightBadge.classList.add('bg-danger');
-            } else {
-                totalWeightBadge.classList.remove('bg-danger');
-                totalWeightBadge.classList.add('bg-primary');
-            }
-        }
-
-        function attachEventListeners(element) {
-            element.querySelectorAll('.remove-row-btn').forEach(btn => {
-                btn.addEventListener('click', () => removeRow(btn));
-            });
-            element.querySelectorAll('.weight-input').forEach(input => {
-                input.addEventListener('input', updateTotalWeight);
-            });
-            element.querySelectorAll('.progress-slider').forEach(slider => {
-                slider.addEventListener('input', () => slider.nextElementSibling.textContent = `${slider.value}%`);
-            });
-            // Add listener to update tooltips on text inputs
-            element.querySelectorAll('input[name="activity"], input[name="description"]').forEach(input => {
-                input.addEventListener('input', () => {
-                    input.title = input.value;
-                });
-            });
-        }
-
-        addRowBtn.addEventListener('click', createRow);
-        attachEventListeners(document.body);
-    });
-</script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='scripts/startup_activities.js') }}"></script>
 {% endblock %}

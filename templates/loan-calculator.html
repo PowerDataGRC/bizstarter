@@ -95,17 +95,13 @@
                 <h2 class="h5 mb-0">Loan Payment Schedule</h2>
             </div>
             <div class="card-body">
-                {% if schedule %}
-                <div id="chart-container"
-                    style="position: relative; height: 300px; width: 600px; max-width: 100%; padding: auto; margin: auto;">
+                <div id="chart-container" style="position: relative; height: 300px; width: 100%;"
+                    data-schedule="{{ schedule or '[]' }}" data-loan-term="{{ form_data.loan_term or 0 }}">
                     <canvas id="loanChart"></canvas>
                 </div>
                 <div id="chart-controls" class="mt-2 text-center" style="display: none;">
                     <button id="back-to-yearly" class="btn btn-secondary btn-sm">Back to Yearly View</button>
                 </div>
-                {% else %}
-                <div class="alert alert-info alert-sm mb-0">Your loan payment breakdown will be displayed here.</div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -121,110 +117,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{% if schedule %}
-<script>
-    // --- Number Formatting ---
-    const formatNumberInput = (num) => {
-        if (num === null || num === undefined || num === '') return '';
-        // Remove existing commas and parse as float, then format with commas.
-        const number = parseFloat(String(num).replace(/,/g, ''));
-        return isNaN(number) ? '' : number.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    };
-
-    const parseFormattedNumber = (str) => {
-        if (typeof str !== 'string') return str;
-        return parseFloat(str.replace(/,/g, '')) || 0;
-    };
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const loanAmountInput = document.getElementById('loan_amount');
-
-        // Format the number with commas as the user types
-        loanAmountInput.addEventListener('input', (e) => {
-            const value = e.target.value;
-            const numericValue = parseFormattedNumber(value);
-            const formattedValue = formatNumberInput(numericValue);
-            e.target.value = formattedValue;
-        });
-
-        // Remove formatting on focus for easier editing
-        loanAmountInput.addEventListener('focus', (e) => {
-            e.target.value = parseFormattedNumber(e.target.value) || '';
-        });
-
-        // Remove formatting before form submission
-        loanAmountInput.form.addEventListener('submit', () => {
-            loanAmountInput.value = parseFormattedNumber(loanAmountInput.value);
-        });
-    });
-
-    const scheduleData = {{ schedule | tojson | safe }};
-    const loanTermInYears = {{ form_data.loan_term or 0 }};
-    const ctx = document.getElementById('loanChart').getContext('2d');
-    const backButton = document.getElementById('back-to-yearly');
-    const chartControls = document.getElementById('chart-controls');
-    let loanChart;
-
-    const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-    const tooltipOptions = { callbacks: { label: (c) => `${c.dataset.label || ''}: ${currencyFormatter.format(c.parsed.y)}` } };
-
-    function drawMonthlyChart(data, title) {
-        if (loanChart) loanChart.destroy();
-        loanChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(item => `Month ${item.month}`),
-                datasets: [
-                    { label: 'Principal', data: data.map(item => item.principal_payment), backgroundColor: 'rgba(54, 162, 235, 0.7)' },
-                    { label: 'Interest', data: data.map(item => item.interest_payment), backgroundColor: 'rgba(255, 99, 132, 0.7)' }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { x: { stacked: true }, y: { stacked: true } },
-                plugins: { title: { display: true, text: title, font: { size: 14 } }, tooltip: tooltipOptions }
-            }
-        });
-    }
-
-    function drawYearlyChart() {
-        if (loanChart) loanChart.destroy();
-        const yearlyAggregates = {};
-        scheduleData.forEach(item => {
-            const year = Math.ceil(item.month / 12);
-            if (!yearlyAggregates[year]) yearlyAggregates[year] = { year: year, principal: 0, interest: 0 };
-            yearlyAggregates[year].principal += item.principal_payment;
-            yearlyAggregates[year].interest += item.interest_payment;
-        });
-        const yearlyData = Object.values(yearlyAggregates);
-        loanChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: yearlyData.map(item => `Year ${item.year}`),
-                datasets: [
-                    { label: 'Total Principal', data: yearlyData.map(item => item.principal), backgroundColor: 'rgba(54, 162, 235, 0.7)' },
-                    { label: 'Total Interest', data: yearlyData.map(item => item.interest), backgroundColor: 'rgba(255, 99, 132, 0.7)' }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                onClick: (event, elements) => {
-                    if (elements.length > 0) {
-                        const selectedYear = yearlyData[elements[0].index].year;
-                        const monthlyData = scheduleData.filter(item => Math.ceil(item.month / 12) === selectedYear);
-                        drawMonthlyChart(monthlyData, `Monthly Breakdown for Year ${selectedYear}`);
-                        chartControls.style.display = 'block';
-                    }
-                },
-                scales: { x: { stacked: true, title: { display: true, text: 'Year (Click for details)' } }, y: { stacked: true } },
-                plugins: { title: { display: true, text: 'Yearly Loan Payment Summary', font: { size: 14 } }, tooltip: tooltipOptions }
-            }
-        });
-        chartControls.style.display = 'none';
-    }
-
-    if (loanTermInYears >= 2) drawYearlyChart(); else drawMonthlyChart(scheduleData, 'Monthly Loan Payment Schedule');
-    backButton.addEventListener('click', () => drawYearlyChart());
-</script>
-{% endif %}
+<script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/loan-calculator.js') }}"></script>
 {% endblock %}

@@ -1,6 +1,8 @@
 from app.extensions import db
 from flask_login import UserMixin
+from typing import Any, Dict
 from sqlalchemy import inspect
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 import json
 
 class User(UserMixin, db.Model):
@@ -9,13 +11,13 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
 
     # Relationships
-    products = db.relationship('Product', backref='user', lazy=True, cascade="all, delete-orphan")
-    expenses = db.relationship('Expense', backref='user', lazy=True, cascade="all, delete-orphan")
-    assets = db.relationship('Asset', backref='user', lazy=True, cascade="all, delete-orphan")
-    liabilities = db.relationship('Liability', backref='user', lazy=True, cascade="all, delete-orphan")
-    financial_params = db.relationship('FinancialParams', backref='user', uselist=False, cascade="all, delete-orphan")
+    products: Mapped[list["Product"]] = relationship('Product', backref='user', lazy=True, cascade="all, delete-orphan")
+    expenses: Mapped[list["Expense"]] = relationship('Expense', backref='user', lazy=True, cascade="all, delete-orphan")
+    assets: Mapped[list["Asset"]] = relationship('Asset', backref='user', lazy=True, cascade="all, delete-orphan")
+    liabilities: Mapped[list["Liability"]] = relationship('Liability', backref='user', lazy=True, cascade="all, delete-orphan")
+    financial_params: Mapped["FinancialParams"] = relationship('FinancialParams', backref='user', uselist=False, cascade="all, delete-orphan")
 
-    startup_activities = db.relationship('BusinessStartupActivity', backref='user', lazy=True, cascade="all, delete-orphan")
+    startup_activities: Mapped[list["BusinessStartupActivity"]] = relationship('BusinessStartupActivity', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def __init__(self, username: str, password_hash: str):
         self.username = username
@@ -27,7 +29,7 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False, default=0.0)
     sales_volume = db.Column(db.Integer, nullable=False, default=0)
     sales_volume_unit = db.Column(db.String(20), nullable=False, default='monthly')
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'))
 
     def __init__(self, description, price, sales_volume, sales_volume_unit, user_id):
         self.description = description
@@ -36,10 +38,10 @@ class Product(db.Model):
         self.sales_volume_unit = sales_volume_unit
         self.user_id = user_id
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         insp = inspect(self)
         if insp is None:
-            return {}
+            return {} # pragma: no cover
         return {c.key: getattr(self, c.key) for c in insp.mapper.column_attrs}
 
 class Expense(db.Model):
@@ -47,7 +49,7 @@ class Expense(db.Model):
     item = db.Column(db.String(200), nullable=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
     frequency = db.Column(db.String(20), nullable=False, default='monthly')
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'))
 
     def __init__(self, item, amount, frequency, user_id):
         self.item = item
@@ -55,49 +57,49 @@ class Expense(db.Model):
         self.frequency = frequency
         self.user_id = user_id
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         insp = inspect(self)
         if insp is None:
-            return {}
+            return {} # pragma: no cover
         return {c.key: getattr(self, c.key) for c in insp.mapper.column_attrs}
 
 class Asset(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(200), nullable=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'))
 
     def __init__(self, description, amount, user_id):
         self.description = description
         self.amount = amount
         self.user_id = user_id
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         insp = inspect(self)
         if insp is None:
-            return {}
+            return {} # pragma: no cover
         return {c.key: getattr(self, c.key) for c in insp.mapper.column_attrs}
 
 class Liability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(200), nullable=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'))
 
     def __init__(self, description, amount, user_id):
         self.description = description
         self.amount = amount
         self.user_id = user_id
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         insp = inspect(self)
         if insp is None:
-            return {}
+            return {} # pragma: no cover
         return {c.key: getattr(self, c.key) for c in insp.mapper.column_attrs}
 
 class FinancialParams(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'), unique=True)
     
     company_name = db.Column(db.String(100), default='')
     cogs_percentage = db.Column(db.Float, default=35.0)
@@ -148,7 +150,7 @@ class BusinessStartupActivity(db.Model):
     description = db.Column(db.String(500), nullable=False)
     weight = db.Column(db.Integer, nullable=False)
     progress = db.Column(db.Integer, nullable=False, default=0)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey('user.id'))
 
     def __init__(self, activity, description, weight, progress, user_id):
         self.activity = activity
