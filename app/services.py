@@ -119,7 +119,12 @@ def get_or_recalculate_forecast(user, data=None):
     """
     if not user:
         return None
+
     params = user.financial_params
+    if not params:
+        params = FinancialParams(user_id=user.id)
+        db.session.add(params)
+
     products = [p.to_dict() for p in user.products]
 
     if data:  # Recalculating with new data
