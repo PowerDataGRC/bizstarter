@@ -195,17 +195,17 @@ def _add_loan_sheet(wb, loan_details):
             cell.number_format = CURRENCY_FORMAT
 
     # --- Chart ---
-    chart = BarChart()
-    chart.title = "Loan Payments (Principal vs. Interest)"
-    chart.y_axis.title = "Payment Amount"
-    chart.y_axis.number_format = CURRENCY_FORMAT
-    chart.grouping = "stacked"
+    #chart = BarChart()
+    #chart.title = "Loan Payments (Principal vs. Interest)"
+    #chart.y_axis.title = "Payment Amount"
+    #chart.y_axis.number_format = CURRENCY_FORMAT
+    #chart.grouping = "stacked"
 
-    data = Reference(ws, min_col=2, min_row=header_row, max_col=3, max_row=ws.max_row)
-    cats = Reference(ws, min_col=1, min_row=header_row + 1, max_row=ws.max_row)
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(cats)
-    ws.add_chart(chart, "F2")
+    #data = Reference(ws, min_col=2, min_row=header_row, max_col=3, max_row=ws.max_row)
+    #cats = Reference(ws, min_col=1, min_row=header_row + 1, max_row=ws.max_row)
+    #chart.add_data(data, titles_from_data=True)
+    #chart.set_categories(cats)
+    #ws.add_chart(chart, "F2")
 
 def _finalize_workbook(wb):
     """Applies final formatting to all sheets in the workbook."""

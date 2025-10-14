@@ -16,18 +16,6 @@ def get_product_and_expense_data(user_id):
     if not user:
         return [], [], ''
 
-    # Self-healing: If the user has an incomplete or empty expense list, re-seed all their data.
-    if len(user.expenses) < 4:
-        current_app.logger.info(f"User {user.id} has an incomplete data set. Re-seeding.")
-        db.session.execute(delete(Product).where(Product.user_id == user.id))
-        db.session.execute(delete(Expense).where(Expense.user_id == user.id))
-        db.session.execute(delete(Asset).where(Asset.user_id == user.id))
-        db.session.execute(delete(Liability).where(Liability.user_id == user.id))
-        db.session.execute(delete(BusinessStartupActivity).where(BusinessStartupActivity.user_id == user.id))
-        db.session.execute(delete(FinancialParams).where(FinancialParams.user_id == user.id))
-        db.session.commit()
-        _seed_initial_user_data(user.id)
-
     products_dict = [p.to_dict() for p in user.products]
     expenses_dict = [e.to_dict() for e in user.expenses]
     company_name = user.financial_params.company_name if user.financial_params is not None else ''
@@ -35,25 +23,84 @@ def get_product_and_expense_data(user_id):
 
 def save_product_and_expense_data(user_id, data):
     """Saves product, expense, and company name data for a user."""
-    db.session.execute(delete(Product).where(Product.user_id == user_id))
-    db.session.execute(delete(Expense).where(Expense.user_id == user_id))
+    # Sets of submitted descriptions and items
+    submitted_product_descriptions = {p_data.get('description') for p_data in data.get('products', []) if p_data.get('description')}
+    submitted_expense_items = {e_data.get('item') for e_data in data.get('expenses', []) if e_data.get('item')}
 
+    # Delete products that are no longer in the submitted data
+    products_to_delete = Product.query.filter(
+        Product.user_id == user_id,
+        ~Product.description.in_(submitted_product_descriptions)
+    ).all()
+    for p in products_to_delete:
+        db.session.delete(p)
+
+    # Delete expenses that are no longer in the submitted data
+    expenses_to_delete = Expense.query.filter(
+        Expense.user_id == user_id,
+        ~Expense.item.in_(submitted_expense_items)
+    ).all()
+    for e in expenses_to_delete:
+        db.session.delete(e)
+
+    # Get existing products and expenses for the user
+    existing_products = {p.description: p for p in Product.query.filter_by(user_id=user_id).all()}
+    existing_expenses = {e.item: e for e in Expense.query.filter_by(user_id=user_id).all()}
+
+    # Process products
     for p_data in data.get('products', []):
+        description = p_data.get('description')
+        if not description:
+            continue
+
         try:
-            db.session.add(Product(
-                description=p_data.get('description'), price=float(p_data.get('price', 0) or 0),
-                sales_volume=int(p_data.get('sales_volume', 0) or 0),
-                sales_volume_unit=p_data.get('sales_volume_unit', 'monthly'), user_id=user_id
-            ))
+            price = float(p_data.get('price', 0) or 0)
+            sales_volume = int(p_data.get('sales_volume', 0) or 0)
+            sales_volume_unit = p_data.get('sales_volume_unit', 'monthly')
+
+            if description in existing_products:
+                # Update existing product
+                product = existing_products[description]
+                product.price = price
+                product.sales_volume = sales_volume
+                product.sales_volume_unit = sales_volume_unit
+            else:
+                # Create new product
+                product = Product(
+                    description=description,
+                    price=price,
+                    sales_volume=sales_volume,
+                    sales_volume_unit=sales_volume_unit,
+                    user_id=user_id
+                )
+                db.session.add(product)
         except (ValueError, TypeError):
             continue
 
+    # Process expenses
     for e_data in data.get('expenses', []):
+        item = e_data.get('item')
+        if not item:
+            continue
+
         try:
-            db.session.add(Expense(
-                item=e_data.get('item'), amount=float(e_data.get('amount', 0) or 0),
-                frequency=e_data.get('frequency', 'monthly'), user_id=user_id
-            ))
+            amount = float(e_data.get('amount', 0) or 0)
+            frequency = e_data.get('frequency', 'monthly')
+
+            if item in existing_expenses:
+                # Update existing expense
+                expense = existing_expenses[item]
+                expense.amount = amount
+                expense.frequency = frequency
+            else:
+                # Create new expense
+                expense = Expense(
+                    item=item,
+                    amount=amount,
+                    frequency=frequency,
+                    user_id=user_id
+                )
+                db.session.add(expense)
         except (ValueError, TypeError):
             continue
 

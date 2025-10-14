@@ -78,7 +78,7 @@
                 {% if dscr > 0 %}
                 <hr class="my-2">
                 <div class="mt-2">
-                    <div class="stat-title small">Debt Service Coverage Ratio (DSCR)
+                    <div class="stat-title small">Debt Service Coverage Ratio (DSCR) <a href="{{ url_for('main.library') }}#dscr" class="text-decoration-none"><i class="bi bi-info-circle"></i></a>
                     </div>
                     <div class="stat-value h6 text-primary">{{ "{:,.2f}".format(dscr) }}</div>
                     <p class="mt-1 small">{{ dscr_status }}</p>
@@ -87,7 +87,7 @@
                 {% if icr > 0 %}
                 <hr class="my-2">
                 <div class="mt-2">
-                    <div class="stat-title small">Interest Coverage Ratio (ICR)
+                    <div class="stat-title small">Interest Coverage Ratio (ICR) <a href="{{ url_for('main.library') }}#icr" class="text-decoration-none"><i class="bi bi-info-circle"></i></a>
                     </div>
                     <div class="stat-value h6 text-primary">{{ "{:,.2f}".format(icr) }}</div>
                 </div>
