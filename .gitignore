@@ -8,3 +8,4 @@ new-feature.md
 .env.development.local
 .env.production.local
 __pycache__/
+deserver.sh
